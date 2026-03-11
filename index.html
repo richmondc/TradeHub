@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>TradeHub Terminal v1.1</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#050b12; --bg2:#0b1420; --bg3:#101c2a; --line:#1a2b3c;
+    --text:#d9e7f2; --muted:#6e8396; --cyan:#20d8ff; --orange:#ff9f1c;
+    --green:#21e38a; --red:#ff4d6d; --yellow:#ffd166; --purple:#b388ff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:linear-gradient(180deg,#040810 0%,#07101a 100%);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(32,216,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(32,216,255,.02) 1px,transparent 1px);background-size:32px 32px;opacity:.5}
+  .app{position:relative;z-index:1;padding-bottom:76px}
+  .header{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(5,11,18,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .logo{font-size:18px;font-weight:800;letter-spacing:2px;color:var(--cyan)}
+  .logo em{font-style:normal;color:var(--orange)}
+  .version{font-size:10px;color:var(--muted)}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .pill{border:1px solid var(--line);background:var(--bg2);border-radius:8px;padding:4px 8px;font-size:10px;color:var(--muted)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+  .time{font-size:14px;font-weight:700}
+  .strip{position:sticky;top:56px;z-index:40;display:flex;overflow:auto;gap:0;background:var(--bg2);border-bottom:1px solid var(--line)}
+  .strip::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:10px 14px;border-right:1px solid var(--line)}
+  .chip b{color:var(--orange)} .chip .up{color:var(--green)} .chip .dn{color:var(--red)}
+  .page{display:none}.page.active{display:block}
+  .section{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 16px;color:var(--muted);font-size:11px;letter-spacing:2px;text-transform:uppercase;background:#02060b}
+  .addbar{display:flex;gap:8px;padding:16px;background:var(--bg2);border-bottom:1px solid var(--line)}
+  input,select,button{font:inherit}
+  .input{flex:1;background:var(--bg3);color:var(--text);border:1px solid #244056;border-radius:8px;padding:14px 12px;font-size:12px}
+  .btn{background:rgba(32,216,255,.08);color:var(--cyan);border:1px solid var(--cyan);border-radius:8px;padding:12px 16px;font-weight:700}
+  .card{display:grid;grid-template-columns:1fr auto;gap:12px;padding:16px;border-bottom:1px solid var(--line);background:rgba(10,18,28,.9)}
+  .card.selected{box-shadow:inset 3px 0 0 var(--cyan);background:rgba(32,216,255,.04)}
+  .sym{font-size:24px;font-weight:800;color:var(--orange);line-height:1}
+  .name{margin-top:8px;color:var(--muted);font-size:12px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .badge{font-size:10px;border-radius:6px;padding:6px 10px;border:1px solid var(--line);color:var(--muted);background:var(--bg3)}
+  .badge.long{color:var(--green);border-color:rgba(33,227,138,.35);background:rgba(33,227,138,.08)}
+  .badge.short{color:var(--red);border-color:rgba(255,77,109,.35);background:rgba(255,77,109,.08)}
+  .badge.neutral{color:var(--yellow);border-color:rgba(255,209,102,.35);background:rgba(255,209,102,.08)}
+  .pricebox{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+  .price{font-size:24px;font-weight:900}.chg{font-size:13px;font-weight:700}.chg.up{color:var(--green)}.chg.dn{color:var(--red)}
+  .remove{width:36px;height:36px;border-radius:50%;background:rgba(255,77,109,.08);border:1px solid rgba(255,77,109,.35);color:var(--red);font-size:18px;line-height:1}
+  .panel{padding:16px;background:var(--bg2);border-bottom:1px solid var(--line)}
+  .charthead{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start}
+  .chartsym{font-size:44px;font-weight:900;color:var(--orange);line-height:1}
+  .subtitle{margin-top:10px;color:var(--muted);font-size:12px;line-height:1.5}
+  .bigprice{text-align:right}.bigprice .v{font-size:44px;font-weight:900}.bigprice .c{margin-top:4px;font-size:18px;font-weight:700}
+  .notice{margin-top:12px;padding:10px 12px;background:rgba(255,159,28,.08);border:1px solid rgba(255,159,28,.25);border-radius:8px;color:#ffd7a0;font-size:11px;line-height:1.5}
+  .tfbar{display:flex;gap:8px;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--line);overflow:auto}
+  .tfbar::-webkit-scrollbar{display:none}
+  .tf{flex:0 0 auto;padding:8px 14px;border-radius:8px;border:1px solid #244056;background:transparent;color:var(--muted)}
+  .tf.active{border-color:var(--orange);color:var(--orange);background:rgba(255,159,28,.08)}
+  .widgetwrap{height:360px;background:#000;border-bottom:1px solid var(--line)}
+  .widget{width:100%;height:100%}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line)}
+  .metric{background:var(--bg2);padding:12px 8px;text-align:center}.metric .l{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}.metric .v{margin-top:6px;font-size:18px;font-weight:800}.metric .s{margin-top:4px;font-size:10px;color:var(--muted)}
+  .signal-card{margin:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2)}
+  .signal-head{padding:12px 14px;background:var(--bg3);font-size:14px;font-weight:800;letter-spacing:1px}
+  .signal-body{padding:14px;font-size:12px;line-height:1.7;color:var(--text)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);margin-top:12px}
+  .cell{background:var(--bg2);padding:12px}.cell .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}.cell .v{margin-top:5px;font-size:18px;font-weight:800}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;background:var(--bg2);border-bottom:1px solid var(--line)}
+  .toolbar .btn2{padding:8px 12px;border-radius:8px;border:1px solid #244056;background:transparent;color:var(--muted)}
+  .toolbar .btn2.active{border-color:var(--cyan);color:var(--cyan);background:rgba(32,216,255,.08)}
+  .listcard{padding:14px 16px;border-bottom:1px solid var(--line);background:rgba(10,18,28,.92)}
+  .listtitle{font-size:16px;font-weight:800}
+  .muted{color:var(--muted)}
+  .footer-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--line);background:rgba(5,11,18,.98);backdrop-filter:blur(12px)}
+  .navbtn{border:0;background:none;color:var(--muted);padding:10px 4px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px}
+  .navbtn.active{color:var(--cyan)}
+  .navbtn .icon{display:block;font-size:20px;margin-bottom:4px}
+  .empty{padding:22px 16px;color:var(--muted);font-size:12px}
+  .linkbtn{display:inline-block;margin-top:10px;color:var(--cyan);text-decoration:none;border:1px solid #244056;background:rgba(32,216,255,.06);padding:8px 10px;border-radius:8px;font-size:11px}
+  .status{margin:12px 16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(32,216,255,.05);color:var(--muted);font-size:11px;line-height:1.5}
+  @media (max-width:420px){ .sym{font-size:22px}.chartsym{font-size:40px}.bigprice .v{font-size:40px}.grid{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div>
+      <div class="logo">TRADEHUB <em>TERMINAL</em> <span class="version">v1.1 worker-backed</span></div>
+    </div>
+    <div class="header-right">
+      <div class="pill" id="sourcePill">WORKER BACKEND</div>
+      <div class="dot" id="marketDot"></div>
+      <div class="time" id="clock">--:--</div>
+    </div>
+  </header>
+  <div class="strip" id="tickerStrip"></div>
+  <div class="status" id="backendStatus">Checking backend…</div>
+
+  <section class="page active" id="page-watch">
+    <div class="addbar">
+      <input class="input" id="symbolInput" placeholder="Add ticker (e.g. TSLA or /ES)" />
+      <button class="btn" id="addBtn">+ADD</button>
+    </div>
+    <div class="section">Futures — Intraday</div>
+    <div id="futuresList"></div>
+    <div class="section">Stocks & ETFs</div>
+    <div id="stocksList"></div>
+  </section>
+
+  <section class="page" id="page-chart">
+    <div class="panel">
+      <div class="charthead">
+        <div>
+          <div class="chartsym" id="chartSym">—</div>
+          <div class="subtitle" id="chartSub">Tap a symbol from Watch.</div>
+        </div>
+        <div class="bigprice">
+          <div class="v" id="chartPrice">—</div>
+          <div class="c" id="chartChange">—</div>
+        </div>
+      </div>
+      <div class="notice" id="chartNotice">For futures, TradeHub uses a TradingView-aligned proxy model so the chart and recommendation stay in sync. Execution prices should still come from your broker.</div>
+    </div>
+    <div class="tfbar" id="timeframeBar"></div>
+    <div class="widgetwrap"><div class="widget" id="tvContainer"></div></div>
+    <div class="grid" id="metricsGrid"></div>
+    <div class="signal-card">
+      <div class="signal-head" id="signalTitle">Signal</div>
+      <div class="signal-body" id="signalBody">Load a chart to see the recommendation stack.</div>
+      <div class="cols" id="signalCols"></div>
+    </div>
+  </section>
+
+  <section class="page" id="page-scan">
+    <div class="toolbar" id="scanToolbar">
+      <button class="btn2 active" data-scan="futures">Futures</button>
+      <button class="btn2" data-scan="stocks">Stocks</button>
+      <button class="btn2" id="runScanBtn">Run Scan</button>
+    </div>
+    <div id="scanResults" class="empty">Run a scan to rank symbols using the same proxy-aligned indicator stack as the chart page.</div>
+  </section>
+
+  <section class="page" id="page-news">
+    <div class="section">Macro Calendar</div>
+    <div id="newsList"></div>
+  </section>
+
+  <section class="page" id="page-wheel">
+    <div class="toolbar" id="wheelToolbar">
+      <button class="btn2 active" data-wheel="income">Collect Premium</button>
+      <button class="btn2" data-wheel="entry">Enter at Discount</button>
+      <button class="btn2" data-wheel="cc">Covered Calls</button>
+    </div>
+    <div id="wheelList"></div>
+  </section>
+
+  <section class="page" id="page-options">
+    <div class="toolbar" id="optionsToolbar">
+      <button class="btn2 active" data-opt="buycall">Buy Call</button>
+      <button class="btn2" data-opt="buyput">Buy Put</button>
+      <button class="btn2" data-opt="credit">Credit Spread</button>
+      <button class="btn2" data-opt="debit">Debit Spread</button>
+    </div>
+    <div id="optionsList"></div>
+  </section>
+
+  <section class="page" id="page-guide">
+    <div class="listcard">
+      <div class="listtitle">Cloudflare Worker backend required</div>
+      <div class="muted" style="margin-top:8px;line-height:1.7">This version uses a tiny backend proxy so GitHub Pages does not have to call Yahoo directly from the browser. That fixes the “data unavailable” issue you were seeing.</div>
+    </div>
+    <div class="listcard">
+      <div class="listtitle">Current futures set</div>
+      <div class="muted" style="margin-top:8px;line-height:1.8">/ES, /CL, /GC, /SI, /MGC, /SIL. /NQ is intentionally excluded based on your instructions.</div>
+    </div>
+    <div class="listcard">
+      <div class="listtitle">Recommendation stack</div>
+      <div class="muted" style="margin-top:8px;line-height:1.8">EMA 9 / EMA 21, RSI 14, MACD, VWAP, Bollinger Bands, and Stoch RSI. Stoch RSI is treated as fast confirmation, not a primary signal.</div>
+    </div>
+  </section>
+</div>
+
+<nav class="footer-nav">
+  <button class="navbtn active" data-page="watch"><span class="icon">📋</span>Watch</button>
+  <button class="navbtn" data-page="chart"><span class="icon">📈</span>Chart</button>
+  <button class="navbtn" data-page="scan"><span class="icon">⚡</span>Scan</button>
+  <button class="navbtn" data-page="news"><span class="icon">📰</span>News</button>
+  <button class="navbtn" data-page="wheel"><span class="icon">🎯</span>Wheel</button>
+  <button class="navbtn" data-page="options"><span class="icon">📊</span>Options</button>
+  <button class="navbtn" data-page="guide"><span class="icon">📖</span>Guide</button>
+</nav>
+
+<script>
+// Set this in tradehub.config.js or edit directly after deploying the Worker.
+window.TRADEHUB_API_BASE = window.TRADEHUB_API_BASE || 'https://YOUR-WORKER-SUBDOMAIN.workers.dev';
+</script>
+<script>
+const API_BASE = (window.TRADEHUB_API_BASE || '').replace(/\/$/, '');
+const STORAGE_KEY = 'tradehub-cleanroom-v110';
+const FUTURES = [
+  {id:'/ES', name:'E-mini S&P 500', proxy:'SPY', tv:'AMEX:SPY', type:'future', proxyName:'SPY'},
+  {id:'/CL', name:'Crude Oil', proxy:'USO', tv:'AMEX:USO', type:'future', proxyName:'USO'},
+  {id:'/GC', name:'Gold Futures', proxy:'GLD', tv:'AMEX:GLD', type:'future', proxyName:'GLD'},
+  {id:'/SI', name:'Silver Futures', proxy:'SLV', tv:'AMEX:SLV', type:'future', proxyName:'SLV'},
+  {id:'/MGC', name:'Micro Gold', proxy:'GLD', tv:'AMEX:GLD', type:'future', proxyName:'GLD'},
+  {id:'/SIL', name:'Micro Silver', proxy:'SLV', tv:'AMEX:SLV', type:'future', proxyName:'SLV'}
+];
+const STOCKS = [
+  {id:'PLTR', name:'Palantir Tech.', proxy:'PLTR', tv:'NASDAQ:PLTR', type:'stock'},
+  {id:'TSLA', name:'Tesla Inc.', proxy:'TSLA', tv:'NASDAQ:TSLA', type:'stock'},
+  {id:'SPY', name:'SPDR S&P 500 ETF', proxy:'SPY', tv:'AMEX:SPY', type:'stock'},
+  {id:'QQQ', name:'Invesco QQQ ETF', proxy:'QQQ', tv:'NASDAQ:QQQ', type:'stock'},
+  {id:'AAPL', name:'Apple Inc.', proxy:'AAPL', tv:'NASDAQ:AAPL', type:'stock'},
+  {id:'NVDA', name:'NVIDIA Corp.', proxy:'NVDA', tv:'NASDAQ:NVDA', type:'stock'}
+];
+const CATALOG = [...FUTURES, ...STOCKS];
+const TF_MAP = [
+  {id:'1', label:'1m', interval:'1m', range:'1d'}, {id:'5', label:'5m', interval:'5m', range:'5d'}, {id:'15', label:'15m', interval:'15m', range:'1mo'},
+  {id:'30', label:'30m', interval:'30m', range:'1mo'}, {id:'60', label:'1h', interval:'60m', range:'3mo'}, {id:'240', label:'4h', interval:'1d', range:'6mo'}
+];
+const NEWS = [
+  {time:'Wed 11:00 AM PT', title:'EIA Crude Oil Inventories', note:'Primary oil catalyst. Most relevant event for /CL week-to-week.'},
+  {time:'Thu 5:30 AM PT', title:'Initial Jobless Claims', note:'Can move ES and rate-cut expectations.'},
+  {time:'Fri 5:30 AM PT', title:'PCE / Core PCE', note:'Fed-preferred inflation gauge. Highest macro importance.'},
+  {time:'FOMC days', title:'Rate Decision + Powell', note:'Expect the most violent futures moves during and after the press conference.'}
+];
+const WHEEL_IDEAS = {
+  income:[
+    {sym:'SOFI', text:'Best for premium efficiency if you want smaller-ticket CSP income.'},
+    {sym:'HOOD', text:'High IV income candidate if you are comfortable with assignment risk.'},
+    {sym:'PLTR', text:'Rich premium but trend-sensitive. Better when selling below support.'}
+  ],
+  entry:[
+    {sym:'AAPL', text:'If you want assignment, choose strikes you would genuinely be happy owning.'},
+    {sym:'AMZN', text:'Discount-entry style works better than pure premium harvesting here.'},
+    {sym:'MSFT', text:'Lower IV, stronger quality. Better for patient wheel structure.'}
+  ],
+  cc:[
+    {sym:'AAPL', text:'Conservative covered call candidate above your cost basis.'},
+    {sym:'NVDA', text:'Covered calls pay well but require tighter roll discipline.'},
+    {sym:'TSLA', text:'Only if you accept frequent assignment pressure.'}
+  ]
+};
+
+const appState = {
+  watchlist: loadState(),
+  selected: null,
+  timeframe: '15',
+  quoteCache: {},
+  chartDataCache: {},
+  scanMode: 'futures',
+  wheelMode: 'income',
+  optionMode: 'buycall',
+  backendOk: false
+};
+
+function loadState(){
+  try{ const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); if(raw && Array.isArray(raw.watchlist)) return raw.watchlist; }catch(e){}
+  return [...FUTURES.map(x=>x.id), ...STOCKS.map(x=>x.id)];
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify({watchlist: appState.watchlist})); }
+function getMeta(id){ return CATALOG.find(x=>x.id === id); }
+function pageTo(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelector(`.navbtn[data-page="${id}"]`).classList.add('active');
+}
+function cssId(v){ return v.replace(/[^a-z0-9]/gi,'_'); }
+function fmt(v){ return v==null || Number.isNaN(v) ? '—' : (v>=1000 ? v.toFixed(1) : v.toFixed(2)); }
+function fmtPct(price, prev){ if(!price||!prev) return {text:'—', cls:''}; const p=((price-prev)/prev)*100; return {text:`${p>=0?'▲':'▼'}${Math.abs(p).toFixed(2)}%`, cls:p>=0?'up':'dn'}; }
+function updateClock(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+setInterval(updateClock, 1000); updateClock();
+
+async function apiFetch(path){
+  if(!API_BASE || API_BASE.includes('YOUR-WORKER-SUBDOMAIN')) throw new Error('worker not configured');
+  const res = await fetch(`${API_BASE}${path}`, {cache:'no-store'});
+  if(!res.ok) throw new Error(`api ${res.status}`);
+  return res.json();
+}
+
+async function checkBackend(){
+  const el = document.getElementById('backendStatus');
+  try{
+    const health = await apiFetch('/health');
+    appState.backendOk = true;
+    document.getElementById('sourcePill').textContent = 'WORKER LIVE';
+    el.innerHTML = `Backend connected: <strong style="color:var(--cyan)">${health.service || 'worker'}</strong>. Quotes and history now load through the proxy instead of directly from the browser.`;
+  }catch(err){
+    appState.backendOk = false;
+    document.getElementById('sourcePill').textContent = 'WORKER NEEDED';
+    el.innerHTML = 'Backend not connected yet. Deploy the Cloudflare Worker, then set <strong style="color:var(--cyan)">window.TRADEHUB_API_BASE</strong> to your Worker URL. TradingView charts can still load.';
+  }
+}
+
+async function fetchBatchQuotes(symbols){
+  const json = await apiFetch(`/quote?symbols=${encodeURIComponent(symbols.join(','))}`);
+  if(!json?.quotes) throw new Error('no quotes');
+  return json.quotes;
+}
+
+async function fetchHistory(symbol, range, interval){
+  const json = await apiFetch(`/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`);
+  if(!json?.points?.length) throw new Error('no history');
+  return json.points;
+}
+
+function ema(series, period){ const k = 2/(period+1); let out=[]; let prev=series[0]; for(const val of series){ prev = val*k + prev*(1-k); out.push(prev); } return out; }
+function rsi(series, period=14){ if(series.length < period+1) return 50; let gains=0, losses=0; for(let i=1;i<=period;i++){ const d = series[i]-series[i-1]; if(d>=0) gains+=d; else losses-=d; } gains/=period; losses/=period; for(let i=period+1;i<series.length;i++){ const d = series[i]-series[i-1]; gains = ((gains*(period-1)) + Math.max(d,0))/period; losses = ((losses*(period-1)) + Math.max(-d,0))/period; } if(!losses) return 100; const rs = gains/losses; return 100 - (100/(1+rs)); }
+function macd(series){ const e12 = ema(series,12), e26 = ema(series,26); const line = e12.map((v,i)=>v-e26[i]); const signal = ema(line.slice(26),9); const m = line[line.length-1], s = signal[signal.length-1] || 0; return {line:m, signal:s, hist:m-s}; }
+function bollinger(series, period=20){ const slice = series.slice(-period); const avg = slice.reduce((a,b)=>a+b,0)/slice.length; const variance = slice.reduce((a,b)=>a + Math.pow(b-avg,2),0)/slice.length; const sd = Math.sqrt(variance); return {mid:avg, upper:avg+2*sd, lower:avg-2*sd, width:avg?((4*sd/avg)*100):0}; }
+function calcVWAP(points){ let num=0, den=0; for(const p of points){ const tp = (p.h+p.l+p.c)/3; num += tp*p.v; den += p.v; } return den ? num/den : points[points.length-1].c; }
+function stochRsi(series){ const rsiVals=[]; for(let i=15;i<series.length;i++) rsiVals.push(rsi(series.slice(0,i+1),14)); if(!rsiVals.length) return 50; const last = rsiVals.slice(-14); const cur = rsiVals[rsiVals.length-1], min = Math.min(...last), max = Math.max(...last); if(max===min) return 50; return ((cur-min)/(max-min))*100; }
+function buildSignal(metrics){
+  let bull=0, bear=0, notes=[];
+  if(metrics.e9 > metrics.e21){ bull+=2; notes.push('EMA 9 is above EMA 21'); } else { bear+=2; notes.push('EMA 9 is below EMA 21'); }
+  if(metrics.rsi < 35){ bull+=1; notes.push('RSI is oversold'); } else if(metrics.rsi > 65){ bear+=1; notes.push('RSI is stretched'); }
+  if(metrics.macd.hist > 0){ bull+=1; notes.push('MACD histogram is positive'); } else { bear+=1; notes.push('MACD histogram is negative'); }
+  if(metrics.price > metrics.vwap){ bull+=1; notes.push('Price is above VWAP'); } else { bear+=1; notes.push('Price is below VWAP'); }
+  if(metrics.stoch < 20){ bull+=1; notes.push('Stoch RSI is turning up from low levels'); } else if(metrics.stoch > 80){ bear+=1; notes.push('Stoch RSI is extended high'); }
+  let state='NEUTRAL', cls='neutral', bias='No edge';
+  if(bull-bear >= 2){ state = bull>=5 ? 'WATCH LONG' : 'BULLISH BUT EARLY'; cls='long'; bias='Long bias'; }
+  else if(bear-bull >= 2){ state = bear>=5 ? 'WATCH SHORT' : 'BEARISH BUT EARLY'; cls='short'; bias='Short bias'; }
+  const entry = metrics.price > metrics.e21 ? `Prefer pullback toward ${fmt(metrics.e21)}` : `Need reclaim above ${fmt(metrics.e21)}`;
+  const target = cls==='long' ? `First objective ${fmt(metrics.bb.upper)}` : cls==='short' ? `First objective ${fmt(metrics.bb.lower)}` : `Wait for directional confirmation`;
+  return {state, cls, bias, notes, entry, target};
+}
+
+async function getDataset(meta){
+  const tf = TF_MAP.find(x=>x.id===appState.timeframe) || TF_MAP[2];
+  const cacheKey = `${meta.proxy}_${tf.range}_${tf.interval}`;
+  if(appState.chartDataCache[cacheKey]) return appState.chartDataCache[cacheKey];
+  const [quotes, history] = await Promise.all([fetchBatchQuotes([meta.proxy]), fetchHistory(meta.proxy, tf.range, tf.interval)]);
+  const quote = quotes[meta.proxy];
+  if(!quote || !quote.price) throw new Error('missing quote');
+  const closes = history.map(x=>x.c);
+  const e9a = ema(closes,9), e21a = ema(closes,21), mac = macd(closes), bb = bollinger(closes), vw = calcVWAP(history);
+  const data = { meta, quote, history, metrics: { price: quote.price, e9: e9a[e9a.length-1], e21: e21a[e21a.length-1], rsi: rsi(closes,14), macd: mac, bb, vwap: vw, stoch: stochRsi(closes) } };
+  appState.chartDataCache[cacheKey] = data;
+  return data;
+}
+
+function renderWatchlists(){
+  const fEl=document.getElementById('futuresList'), sEl=document.getElementById('stocksList'); fEl.innerHTML=''; sEl.innerHTML='';
+  const ids = appState.watchlist; const futures = ids.map(getMeta).filter(Boolean).filter(x=>x.type==='future'); const stocks = ids.map(getMeta).filter(Boolean).filter(x=>x.type==='stock');
+  if(!futures.length) fEl.innerHTML = '<div class="empty">No futures yet. Add /ES, /CL, /GC, /SI, /MGC, or /SIL.</div>';
+  if(!stocks.length) sEl.innerHTML = '<div class="empty">No stocks yet.</div>';
+  futures.forEach(meta => fEl.appendChild(buildCard(meta))); stocks.forEach(meta => sEl.appendChild(buildCard(meta)));
+  refreshStrip(); if(appState.backendOk) refreshPrices();
+}
+function buildCard(meta){
+  const card = document.createElement('div'); card.className = 'card' + (appState.selected===meta.id?' selected':'');
+  card.innerHTML = `<div><div class="sym">${meta.id}</div><div class="name">${meta.name}</div><div class="badges"><span class="badge neutral" id="sig-${cssId(meta.id)}">${appState.backendOk?'LOADING':'WORKER NEEDED'}</span><a class="linkbtn" href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(meta.tv)}" target="_blank">TV ↗</a></div></div><div class="pricebox"><button class="remove" data-remove="${meta.id}">×</button><div class="price" id="price-${cssId(meta.id)}">—</div><div class="chg" id="chg-${cssId(meta.id)}">${appState.backendOk?'Loading…':'Worker needed'}</div></div>`;
+  card.addEventListener('click', (e)=>{ if(e.target.closest('[data-remove]')) return; appState.selected = meta.id; renderWatchlists(); pageTo('chart'); loadChart(meta.id); });
+  card.querySelector('[data-remove]').addEventListener('click', ()=>removeSymbol(meta.id));
+  return card;
+}
+async function refreshPrices(){
+  const metas = appState.watchlist.map(getMeta).filter(Boolean);
+  const quoteMap = await fetchBatchQuotes(metas.map(x=>x.proxy));
+  for(const meta of metas){
+    const quote = quoteMap[meta.proxy]; const p = document.getElementById('price-'+cssId(meta.id)); const c = document.getElementById('chg-'+cssId(meta.id)); const s = document.getElementById('sig-'+cssId(meta.id));
+    if(!quote){ if(p) p.textContent='—'; if(c) c.textContent='Unavailable'; if(s){ s.textContent='NO DATA'; s.className='badge neutral'; } continue; }
+    const qWrap = {quote}; appState.quoteCache[meta.id] = qWrap;
+    if(p) p.textContent = fmt(quote.price);
+    const change = fmtPct(quote.price, quote.prev);
+    if(c){ c.textContent = change.text; c.className = 'chg ' + (change.cls||''); }
+    if(s){ const stubSignal = quote.price > quote.prev ? {state:'WATCH LONG', cls:'long'} : quote.price < quote.prev ? {state:'WATCH SHORT', cls:'short'} : {state:'NEUTRAL', cls:'neutral'}; s.textContent = stubSignal.state; s.className = 'badge ' + stubSignal.cls; }
+  }
+  refreshStrip();
+}
+function refreshStrip(){
+  const strip = document.getElementById('tickerStrip'); strip.innerHTML='';
+  for(const id of appState.watchlist.slice(0,8)){
+    const meta = getMeta(id); if(!meta) continue; const cached = appState.quoteCache[id]; const chip = document.createElement('div'); chip.className='chip';
+    const pct = cached ? fmtPct(cached.quote.price, cached.quote.prev) : {text:'—', cls:''};
+    chip.innerHTML = `<b>${meta.id}</b><span class="${pct.cls==='up'?'up':pct.cls==='dn'?'dn':''}">${cached?fmt(cached.quote.price):'—'}</span><span class="${pct.cls==='up'?'up':pct.cls==='dn'?'dn':''}">${pct.text}</span>`; strip.appendChild(chip);
+  }
+}
+function addSymbol(){ const input=document.getElementById('symbolInput'); const raw=input.value.trim().toUpperCase(); if(!raw) return; let meta=getMeta(raw); if(!meta){ if(raw.startsWith('/')) return alert('Supported futures: /ES, /CL, /GC, /SI, /MGC, /SIL'); meta={id:raw,name:raw,proxy:raw,tv:`NASDAQ:${raw}`,type:'stock'}; CATALOG.push(meta);} if(!appState.watchlist.includes(meta.id)) appState.watchlist.unshift(meta.id); saveState(); input.value=''; renderWatchlists(); }
+function removeSymbol(id){ appState.watchlist = appState.watchlist.filter(x=>x!==id); if(appState.selected===id) appState.selected=null; saveState(); renderWatchlists(); }
+function renderTimeframes(){ const bar=document.getElementById('timeframeBar'); bar.innerHTML=''; TF_MAP.forEach(tf=>{ const btn=document.createElement('button'); btn.className='tf'+(appState.timeframe===tf.id?' active':''); btn.textContent=tf.label; btn.onclick=()=>{ appState.timeframe=tf.id; appState.chartDataCache={}; renderTimeframes(); if(appState.selected) loadChart(appState.selected); }; bar.appendChild(btn); }); }
+renderTimeframes();
+function loadTradingView(meta){ const container=document.getElementById('tvContainer'); container.innerHTML=''; const inner=document.createElement('div'); inner.style.height='100%'; inner.style.width='100%'; container.appendChild(inner); new TradingView.widget({ autosize:true, symbol:meta.tv, interval: appState.timeframe, timezone:'America/Los_Angeles', theme:'dark', style:'1', locale:'en', hide_top_toolbar:false, hide_legend:false, enable_publishing:false, allow_symbol_change:false, save_image:false, backgroundColor:'#000000', gridColor:'rgba(255,255,255,0.06)', container_id: inner.id = 'tv_' + Math.random().toString(36).slice(2) }); }
+async function loadChart(id){
+  const meta = getMeta(id); if(!meta) return;
+  document.getElementById('chartSym').textContent = meta.id;
+  document.getElementById('chartSub').textContent = meta.type==='future' ? `${meta.name} — proxy model uses ${meta.proxyName} so chart and recommendation stay aligned.` : `${meta.name}`;
+  document.getElementById('chartPrice').textContent = 'Loading…'; document.getElementById('chartChange').textContent = 'Loading…'; document.getElementById('signalTitle').textContent = 'Loading signal…'; document.getElementById('signalBody').textContent = 'Building the same indicator stack used by this chart view.'; document.getElementById('signalCols').innerHTML=''; document.getElementById('metricsGrid').innerHTML='';
+  loadTradingView(meta);
+  if(!appState.backendOk){ document.getElementById('chartPrice').textContent='—'; document.getElementById('chartChange').textContent='Worker needed'; document.getElementById('signalTitle').textContent='Backend not configured'; document.getElementById('signalBody').innerHTML='Deploy the Cloudflare Worker and set <strong>window.TRADEHUB_API_BASE</strong>. The TradingView chart can still be used right now.'; return; }
+  try{
+    const data = await getDataset(meta); appState.quoteCache[meta.id] = {quote:data.quote}; const q=data.quote; const m=data.metrics; const sig=buildSignal(m);
+    document.getElementById('chartPrice').textContent = fmt(q.price); const ch=fmtPct(q.price,q.prev); const cc=document.getElementById('chartChange'); cc.textContent=ch.text; cc.className='c '+(ch.cls||'');
+    document.getElementById('signalTitle').textContent = sig.state + ' — ' + sig.bias;
+    document.getElementById('signalBody').innerHTML = `${sig.notes.map(x=>'• '+x).join('<br>')}<br><br><strong>Entry idea:</strong> ${sig.entry}<br><strong>Target idea:</strong> ${sig.target}`;
+    renderMetrics(m, sig); renderSignalCols(m, sig); refreshStrip(); renderWatchlists();
+  }catch(err){
+    document.getElementById('chartPrice').textContent='—'; document.getElementById('chartChange').textContent='Data unavailable'; document.getElementById('signalTitle').textContent='Unable to load backend data'; document.getElementById('signalBody').innerHTML=`The TradingView chart still loaded, but quote/history data was unavailable from the Worker.<br><a class="linkbtn" href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(meta.tv)}" target="_blank">Open ${meta.id} on TradingView</a>`;
+  }
+}
+function renderMetrics(m, sig){ const items=[['RSI 14', m.rsi.toFixed(1), m.rsi<35?'Oversold':m.rsi>65?'Extended':'Balanced'],['EMA 9', fmt(m.e9), m.e9>m.e21?'Above EMA21':'Below EMA21'],['EMA 21', fmt(m.e21), m.e9>m.e21?'Bull structure':'Bear structure'],['MACD', m.macd.hist.toFixed(3), m.macd.hist>0?'Positive hist':'Negative hist'],['VWAP', fmt(m.vwap), m.price>m.vwap?'Above VWAP':'Below VWAP'],['BB Width', m.bb.width.toFixed(2)+'%', m.bb.width<3?'Compression':m.bb.width>6?'Expansion':'Normal'],['Stoch RSI', m.stoch.toFixed(1), m.stoch<20?'Low turn zone':m.stoch>80?'High stretch zone':'Neutral'],['Trend', sig.bias, sig.state]]; document.getElementById('metricsGrid').innerHTML = items.map(([l,v,s])=>`<div class="metric"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join(''); }
+function renderSignalCols(m){ document.getElementById('signalCols').innerHTML = `<div class="cell"><div class="k">Proxy symbol</div><div class="v">${appState.selected?getMeta(appState.selected).proxy:'—'}</div></div><div class="cell"><div class="k">Preferred pullback</div><div class="v">${fmt(m.e21)}</div></div><div class="cell"><div class="k">Upper objective</div><div class="v">${fmt(m.bb.upper)}</div></div><div class="cell"><div class="k">Lower objective</div><div class="v">${fmt(m.bb.lower)}</div></div>`; }
+async function runScan(){ document.getElementById('scanResults').innerHTML = '<div class="empty">Scanning…</div>'; if(!appState.backendOk){ document.getElementById('scanResults').innerHTML = '<div class="empty">Deploy the Worker first. Scan relies on backend quote/history data.</div>'; return; } const results=[]; const list = appState.scanMode==='futures' ? FUTURES : appState.watchlist.map(getMeta).filter(Boolean).filter(x=>x.type==='stock'); for(const meta of list){ try{ const data=await getDataset(meta); const sig=buildSignal(data.metrics); let score=50; if(sig.cls==='long') score+=20; if(sig.cls==='short') score+=20; if(data.metrics.price > data.metrics.vwap) score+=5; if(data.metrics.rsi < 35 || data.metrics.rsi > 65) score+=5; results.push({meta,data,sig,score}); }catch(e){} } results.sort((a,b)=>b.score-a.score); document.getElementById('scanResults').innerHTML = results.length ? results.map(r=>`<div class="listcard"><div class="listtitle">${r.meta.id} — ${r.sig.state}</div><div class="muted" style="margin-top:8px;line-height:1.7">${r.meta.name}<br>Score: ${r.score}<br>Proxy: ${r.meta.proxy}<br>Bias: ${r.sig.bias}<br>Entry: ${r.sig.entry}</div></div>`).join('') : '<div class="empty">No data available right now.</div>'; }
+function renderNews(){ document.getElementById('newsList').innerHTML = NEWS.map(n=>`<div class="listcard"><div class="listtitle">${n.title}</div><div class="muted" style="margin-top:8px">${n.time}</div><div class="muted" style="margin-top:8px;line-height:1.7">${n.note}</div></div>`).join(''); }
+function renderWheel(){ document.getElementById('wheelList').innerHTML = WHEEL_IDEAS[appState.wheelMode].map(x=>`<div class="listcard"><div class="listtitle">${x.sym}</div><div class="muted" style="margin-top:8px;line-height:1.7">${x.text}</div></div>`).join(''); }
+function renderOptions(){ const mode=appState.optionMode; const titles={buycall:'Buy Call',buyput:'Buy Put',credit:'Credit Spread',debit:'Debit Spread'}; const watchedStocks=appState.watchlist.map(getMeta).filter(Boolean).filter(x=>x.type==='stock').slice(0,6); document.getElementById('optionsList').innerHTML = watchedStocks.map(meta=>`<div class="listcard"><div class="listtitle">${meta.id} — ${titles[mode]}</div><div class="muted" style="margin-top:8px;line-height:1.7">Day-1 options module is intentionally simple: use the same chart signal first, then choose the strategy structure that matches your directional conviction and risk tolerance. Verify actual chain pricing in your broker.</div></div>`).join('') || '<div class="empty">Add stock tickers to get options ideas here.</div>'; }
+function initNav(){ document.querySelectorAll('.navbtn').forEach(btn=>btn.onclick=()=>pageTo(btn.dataset.page)); document.getElementById('addBtn').onclick=addSymbol; document.getElementById('symbolInput').addEventListener('keydown',e=>{ if(e.key==='Enter') addSymbol(); }); document.querySelectorAll('#scanToolbar .btn2[data-scan]').forEach(btn=>btn.onclick=()=>{ appState.scanMode=btn.dataset.scan; document.querySelectorAll('#scanToolbar .btn2[data-scan]').forEach(x=>x.classList.remove('active')); btn.classList.add('active'); }); document.getElementById('runScanBtn').onclick=runScan; document.querySelectorAll('#wheelToolbar .btn2[data-wheel]').forEach(btn=>btn.onclick=()=>{ appState.wheelMode=btn.dataset.wheel; document.querySelectorAll('#wheelToolbar .btn2[data-wheel]').forEach(x=>x.classList.remove('active')); btn.classList.add('active'); renderWheel(); }); document.querySelectorAll('#optionsToolbar .btn2[data-opt]').forEach(btn=>btn.onclick=()=>{ appState.optionMode=btn.dataset.opt; document.querySelectorAll('#optionsToolbar .btn2[data-opt]').forEach(x=>x.classList.remove('active')); btn.classList.add('active'); renderOptions(); }); }
+function loadTvScript(){ return new Promise((resolve,reject)=>{ if(window.TradingView){ resolve(); return; } const s=document.createElement('script'); s.src='https://s3.tradingview.com/tv.js'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); }); }
+(async function init(){ initNav(); renderNews(); renderWheel(); renderOptions(); renderWatchlists(); await checkBackend(); renderWatchlists(); try{ await loadTvScript(); }catch(e){ document.getElementById('sourcePill').textContent='TV SCRIPT FAILED'; } const first=appState.watchlist[0]; if(first){ appState.selected=first; } })();
+</script>
+</body>
+</html>
