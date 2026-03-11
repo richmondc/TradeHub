@@ -1517,7 +1517,9 @@ function fetchYahoo(sym, onSuccess, onFail){
 }
 
 // SOURCE 2: Twelve Data (800 calls/day free, works 24/7 including Asia/London)
-var TD_KEY = '06154ed6861949b4aad08eacd4672a89';
+// NOTE: move keys to a private backend before publishing this publicly.
+var APP_CONFIG = window.TRADEHUB_CONFIG || {};
+var TD_KEY = APP_CONFIG.twelveDataKey || '06154ed6861949b4aad08eacd4672a89';
 var TD_FUTURES = {'ES1!':1,'NQ1!':1,'SI1!':1,'GC1!':1,'CL1!':1,'NG1!':1,'ZB1!':1};
 function fetchTwelveData(sym, onSuccess, onFail){
   var td = TD_MAP[sym]; if(!td){ onFail(); return; }
@@ -1544,8 +1546,8 @@ function fetchTwelveData(sym, onSuccess, onFail){
   try{ xhr.open('GET', url, true); xhr.send(); }catch(e){ onFail(); }
 }
 
-// SOURCE 3: Finnhub (free tier — stocks + some futures CFDs)
-var FH_KEY = 'd6n7gr1r01qir35jf3ggd6n7gr1r01qir35jf3h0';
+// SOURCE 3: Finnhub (kept as non-chart fallback only)
+var FH_KEY = APP_CONFIG.finnhubKey || 'd6n7gr1r01qir35jf3ggd6n7gr1r01qir35jf3h0';
 var FH_MAP = {
   'ES=F':'ES1!','NQ=F':'NQ1!','GC=F':'GC1!','SI=F':'SI1!','CL=F':'CL1!','NG=F':'NG1!',
   'SPY':'SPY','QQQ':'QQQ','AAPL':'AAPL','MSFT':'MSFT','NVDA':'NVDA','AMZN':'AMZN',
@@ -2061,88 +2063,12 @@ function getTVInterval(tf) {
 var _fhWS = null;
 var _fhSubSym = null;
 
+// TradeHub chart architecture: TradingView iframe owns the chart.
+// Header price is refreshed separately via REST polling to avoid price/chart mismatches.
 function connectFinnhubWS(sym) {
-  var FH_KEY = 'd6n7gr1r01qir35jf3ggd6n7gr1r01qir35jf3h0';
-
-  // Close existing connection
-  if(_fhWS) {
-    try { _fhWS.close(); } catch(e) {}
-    _fhWS = null;
-  }
-
-  // Map our symbols to Finnhub format
-  var fhSym = FH_MAP[sym] || sym;
-  _fhSubSym = sym;
-
-  try {
-    _fhWS = new WebSocket('wss://ws.finnhub.io?token=' + FH_KEY);
-
-    _fhWS.onopen = function() {
-      _fhWS.send(JSON.stringify({type:'subscribe', symbol: fhSym}));
-    };
-
-    _fhWS.onmessage = function(event) {
-      try {
-        var msg = JSON.parse(event.data);
-        if(msg.type !== 'trade' || !msg.data || !msg.data.length) return;
-        // Get latest trade price
-        var latest = msg.data[msg.data.length - 1];
-        var livePrice = parseFloat(latest.p);
-        if(!livePrice || livePrice <= 0 || _fhSubSym !== sym) return;
-
-        // Update price cache
-        var prev = (priceCache[sym] && priceCache[sym].prev) || livePrice;
-        var q = priceCache[sym] || {};
-        q.price = livePrice;
-        q.prev = q.prev || prev;
-        q.src = 'LIVE';
-        q.live = true;
-        priceCache[sym] = q;
-        priceCacheTime[sym] = Date.now();
-
-        // Update chart header
-        var pct = (livePrice - (q.prev||livePrice)) / (q.prev||livePrice) * 100;
-        var up = pct >= 0;
-        var prcEl = document.getElementById('cpPrc');
-        var chgEl = document.getElementById('cpChg');
-        if(prcEl && tvCurrentSym === sym) {
-          prcEl.textContent = fmtP(livePrice, sym);
-          prcEl.style.color = up ? 'var(--grn)' : 'var(--red)';
-        }
-        if(chgEl && tvCurrentSym === sym) {
-          chgEl.textContent = (up?'▲':'▼') + Math.abs(pct).toFixed(2) + '%';
-          chgEl.style.color = up ? 'var(--grn)' : 'var(--red)';
-        }
-        // Remove "simulated" note
-        var fullEl = document.getElementById('cpFull');
-        if(fullEl && fullEl.textContent.indexOf('simulated') > -1) {
-          fullEl.textContent = fullEl.textContent
-            .replace('simulated — chart delay up to 30min for futures','live')
-            .replace('simulated — open in Safari for live','live');
-        }
-        setDataSource('LIVE');
-
-        // Update watchlist card too
-        var id = sym.replace(/[^a-z0-9]/gi,'');
-        var pEl = document.getElementById('prc-'+id);
-        var cEl = document.getElementById('chg-'+id);
-        if(pEl) { pEl.textContent = fmtP(livePrice,sym); pEl.style.color = up?'var(--grn)':'var(--red)'; }
-        if(cEl) { cEl.textContent=(up?'▲':'▼')+Math.abs(pct).toFixed(2)+'%'; cEl.style.color=up?'var(--grn)':'var(--red)'; }
-
-      } catch(err) {}
-    };
-
-    _fhWS.onerror = function() {
-      // WebSocket failed — fall back to startChartPricePoll (Yahoo polling)
-      startChartPricePoll(sym);
-    };
-
-    _fhWS.onclose = function() { _fhWS = null; };
-
-  } catch(e) {
-    // WebSocket not available — fall back to polling
-    startChartPricePoll(sym);
-  }
+  // WebSocket streaming intentionally disabled for chart mode.
+  // Multiple live feeds caused header/chart desync and visual jumps.
+  startChartPricePoll(sym);
 }
 
 function closeFinnhubWS() {
@@ -2195,12 +2121,8 @@ function loadTVWidget(sym, interval) {
   iframe.scrolling = 'no';
   iframe.id = 'tvIframe';
 
-  // Listen for price data posted from TV iframe
-  // Remove old listener to avoid duplicates
-  // Connect Finnhub WebSocket for real-time price streaming
-  // This is free, works for all stocks, and gives true tick-by-tick prices
-  connectFinnhubWS(sym);
-
+  // The TradingView iframe owns candles/indicators on-chart.
+  // We keep price/header updates on a separate polling loop only.
   tvDiv.appendChild(iframe);
   tvCurrentSym = sym;
 }
@@ -2213,70 +2135,82 @@ var _chartPollSym = null;
 var _chartPollTimer = null;
 
 function startChartPricePoll(sym) {
-  // Clear previous poll
   if(_chartPollTimer) clearInterval(_chartPollTimer);
   _chartPollSym = sym;
 
-  function doPoll() {
-    if(_chartPollSym !== sym) return; // switched ticker, stop
-    // Try Yahoo v7 first — most reliable for both stocks and futures
-    fetchYahooV7(sym, function(q) {
-      if(q && q.price > 0 && _chartPollSym === sym) {
-        priceCache[sym] = q;
-        priceCacheTime[sym] = Date.now();
-        var prcEl = document.getElementById('cpPrc');
-        var chgEl = document.getElementById('cpChg');
-        var pct = (q.price - q.prev) / q.prev * 100;
-        var up = pct >= 0;
-        if(prcEl) {
-          prcEl.textContent = fmtP(q.price, sym);
-          prcEl.style.color = up ? 'var(--grn)' : 'var(--red)';
-        }
-        if(chgEl) {
-          chgEl.textContent = (up?'▲':'▼') + Math.abs(pct).toFixed(2) + '%';
-          chgEl.style.color = up ? 'var(--grn)' : 'var(--red)';
-        }
-        setDataSource(q.src || 'YAHOO');
-        // Update the subtitle — remove simulated note if we got live price
-        var fullEl = document.getElementById('cpFull');
-        if(fullEl && fullEl.textContent.indexOf('simulated') > -1) {
-          fullEl.textContent = fullEl.textContent
-            .replace('simulated — chart delay up to 30min for futures', 'live via Yahoo/TV')
-            .replace('simulated — open in Safari for live', 'live');
-        }
-        // Also update watchlist card price
-        var pid = sym.replace(/[^a-z0-9]/gi,'');
-        var pEl = document.getElementById('prc-'+pid);
-        var cEl = document.getElementById('chg-'+pid);
-        if(pEl) { pEl.textContent = fmtP(q.price,sym); pEl.style.color = up?'var(--grn)':'var(--red)'; }
-        if(cEl) { cEl.textContent = (up?'▲':'▼')+Math.abs(pct).toFixed(2)+'%'; cEl.style.color = up?'var(--grn)':'var(--red)'; }
+  function paintQuote(q) {
+    if(!q || !(q.price > 0) || _chartPollSym !== sym) return;
+    priceCache[sym] = q;
+    priceCacheTime[sym] = Date.now();
+
+    var pct = q.prev ? ((q.price - q.prev) / q.prev * 100) : 0;
+    var up = pct >= 0;
+    var prcEl = document.getElementById('cpPrc');
+    var chgEl = document.getElementById('cpChg');
+    var ohlcEl = document.getElementById('cpOHLC');
+    var fullEl = document.getElementById('cpFull');
+
+    if(prcEl) {
+      prcEl.textContent = fmtP(q.price, sym);
+      prcEl.style.color = up ? 'var(--grn)' : 'var(--red)';
+    }
+    if(chgEl) {
+      chgEl.textContent = (up ? '▲' : '▼') + Math.abs(pct).toFixed(2) + '%';
+      chgEl.style.color = up ? 'var(--grn)' : 'var(--red)';
+    }
+    if(ohlcEl) {
+      ohlcEl.innerHTML = 'O:'+fmtP(q.open || q.prev || q.price, sym)
+        +' &nbsp;H:'+fmtP(q.high || q.price, sym)
+        +' &nbsp;L:'+fmtP(q.low || q.price, sym)
+        +' &nbsp;V:'+(((q.vol||0)/1e6).toFixed(1))+'M';
+    }
+    if(fullEl) {
+      fullEl.textContent = fullEl.textContent
+        .replace(' (simulated — chart delay up to 30min for futures)', ' (live price via poll)')
+        .replace(' (simulated — open in Safari for live)', ' (live price via poll)')
+        .replace(' (live)', ' (live price via poll)');
+      if(fullEl.textContent.indexOf('(live price via poll)') === -1) {
+        fullEl.textContent += ' (live price via poll)';
       }
+    }
+
+    var id = sym.replace(/[^a-z0-9]/gi,'');
+    var pEl = document.getElementById('prc-'+id);
+    var cEl = document.getElementById('chg-'+id);
+    if(pEl) { pEl.textContent = fmtP(q.price,sym); pEl.style.color = up?'var(--grn)':'var(--red)'; }
+    if(cEl) { cEl.textContent = (up?'▲':'▼')+Math.abs(pct).toFixed(2)+'%'; cEl.style.color = up?'var(--grn)':'var(--red)'; }
+
+    setDataSource(q.src || '12DATA');
+  }
+
+  function doPoll() {
+    if(_chartPollSym !== sym) return;
+
+    fetchTwelveData(sym, function(q) {
+      paintQuote(q);
     }, function() {
-      // Yahoo v7 failed — try liveFetch as backup
-      liveFetch(sym, function(q) {
-        if(q && q.price > 0 && _chartPollSym === sym) {
-          priceCache[sym] = q;
-          priceCacheTime[sym] = Date.now();
-          var prcEl = document.getElementById('cpPrc');
-          if(prcEl) {
-            var pct = (q.price - q.prev) / q.prev * 100;
-            prcEl.textContent = fmtP(q.price, sym);
-            prcEl.style.color = pct>=0 ? 'var(--grn)' : 'var(--red)';
-          }
-          setDataSource(q.src || 'LIVE');
-        }
+      fetchYahooV7(sym, function(q) {
+        paintQuote(q);
+      }, function() {
+        fetchYahoo(sym, function(q) {
+          paintQuote(q);
+        }, function() {
+          liveFetch(sym, function(q) {
+            paintQuote(q);
+          });
+        });
       });
     });
   }
 
-  doPoll(); // immediate first poll
-  _chartPollTimer = setInterval(doPoll, 8000); // then every 8s
+  doPoll();
+  _chartPollTimer = setInterval(doPoll, 5000);
 }
 
 async function loadChart(t,tf) {
   try {
     document.getElementById('cempty').style.display='none';
-    // Load TradingView live widget
+    // Load stable chart architecture: TradingView iframe for candles, REST polling for price.
     var interval = tf ? getTVInterval(tf) : '15';
     loadTVWidget(t.sym, interval);
     // TradingView handles the chart — indicators calculated below from Yahoo data
