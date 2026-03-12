@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>TradeHub Terminal v23</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Bebas+Neue&family=Rajdhani:wght@500;600;700&display=swap');
+:root{
+  --bg0:#03070b;--bg1:#070e15;--bg2:#0c1520;--bg3:#111d28;
+  --bdr:#162230;--bdr2:#1e3347;
+  --acc:#00e5ff;--acc2:#ff8d2b;
+  --grn:#00ff9d;--red:#ff2d55;--yel:#ffcc00;--pur:#bf5af2;--fut:#ff9f1c;
+  --t1:#6a7f90;--t2:#9ab0c0;--t3:#d5eaf5;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;background:var(--bg0);color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:12px}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.015) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
+button,input{font:inherit}
+.app{position:relative;z-index:1;max-width:740px;margin:0 auto;padding-bottom:74px}
+
+/* header */
+.hdr{position:sticky;top:0;z-index:200;background:rgba(7,14,21,.98);backdrop-filter:blur(10px);border-bottom:1px solid var(--bdr2);padding:14px 12px 10px}
+.hdrtop{display:flex;align-items:flex-start;gap:10px}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:29px;letter-spacing:2.5px;line-height:1;color:var(--acc);text-shadow:0 0 18px rgba(0,229,255,.28)}
+.logo em{color:var(--acc2);font-style:normal}
+.ver{font-size:10px;color:var(--t1);margin-left:6px;vertical-align:top}
+.hdr-r{margin-left:auto;display:flex;align-items:flex-start;gap:10px}
+.statbox{border:1px solid var(--bdr2);background:var(--bg2);border-radius:10px;padding:7px 10px;min-width:80px;text-align:center}
+.statbox .top{font-size:9px;letter-spacing:1.2px;color:var(--t1);text-transform:uppercase}
+.statbox .bot{font-size:10px;color:var(--t3);margin-top:2px}
+.clockwrap{display:flex;align-items:center;gap:8px}
+.mbdot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 12px rgba(255,45,85,.45);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.clock{font-family:'Bebas Neue',sans-serif;font-size:24px;line-height:.95;color:var(--t3);text-align:right;letter-spacing:1px}
+.statusrow{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.pill{border:1px solid var(--bdr);background:var(--bg2);border-radius:999px;padding:8px 12px;font-size:10px;color:var(--t2);display:inline-flex;align-items:center;gap:8px}
+.pill .gdot{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 10px rgba(0,255,157,.45)}
+.btn{border:1px solid var(--bdr2);background:var(--bg2);color:var(--t3);border-radius:12px;padding:10px 14px;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn.small{padding:8px 11px;font-size:11px}
+
+/* ticker */
+.tstrip{border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr2);background:var(--bg2);overflow:hidden;height:42px}
+.tinner{display:flex;min-width:max-content;animation:marq 30s linear infinite}
+@keyframes marq{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tchip{display:flex;align-items:center;gap:8px;padding:0 16px;border-right:1px solid var(--bdr);height:42px;white-space:nowrap}
+.tsym{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--fut)}
+.tprc{font-family:'Rajdhani',sans-serif;font-size:16px;color:var(--t3);font-weight:700}
+.tchg{font-size:11px;font-weight:700}
+.up{color:var(--grn)} .down{color:var(--red)} .flat{color:var(--t2)}
+
+/* pages */
+.pg{display:none}
+.pg.on{display:block}
+.sectionlabel{padding:11px 14px;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr2);background:rgba(0,0,0,.15);font-size:10px;letter-spacing:4px;color:var(--t2);text-transform:uppercase}
+.sectionlabel .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--fut);margin-right:10px;vertical-align:middle}
+.sectionlabel.cyan .dot{background:var(--acc)}
+
+/* watch page */
+.watchcards{padding-bottom:8px}
+.card{position:relative;padding:18px 16px 16px;border-bottom:1px solid var(--bdr);background:linear-gradient(180deg,rgba(4,12,18,.88),rgba(6,14,21,.96));cursor:pointer}
+.card.sel{box-shadow:inset 4px 0 0 var(--fut);background:linear-gradient(180deg,rgba(18,22,20,.72),rgba(10,15,22,.98))}
+.cardtop{display:flex;align-items:flex-start;gap:12px}
+.symblk{min-width:0}
+.sym{font-family:'Bebas Neue',sans-serif;font-size:52px;line-height:.9;color:var(--fut);letter-spacing:1px}
+.name{font-size:13px;color:var(--t1);margin-top:8px}
+.meta{margin-left:auto;text-align:right;font-size:11px;color:var(--t1)}
+.priceblk{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-top:16px}
+.sigline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--bdr2);border-radius:10px;padding:8px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+.badge.long{background:rgba(0,255,157,.08);color:var(--grn)}
+.badge.short{background:rgba(255,45,85,.08);color:var(--red)}
+.badge.wait{background:rgba(255,204,0,.08);color:var(--yel)}
+.badge.tv{background:rgba(0,229,255,.06);color:var(--acc)}
+.desc{font-size:11px;color:var(--t2)}
+.pbig{font-family:'Rajdhani',sans-serif;font-size:72px;line-height:.82;color:var(--t3);font-weight:700;text-align:right}
+.pchg{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;text-align:right}
+.pabs{font-size:12px;text-align:right}
+.progress{margin-top:12px;height:7px;border-radius:999px;background:#02060a;border:1px solid var(--bdr);overflow:hidden;max-width:220px}
+.progress>div{height:100%;transition:width .3s ease}
+.cardnote{font-size:11px;color:var(--t1);margin-top:6px}
+
+/* chart page */
+.hero{padding:18px 16px 14px;border-bottom:1px solid var(--bdr2);background:linear-gradient(180deg,rgba(4,12,18,.88),rgba(6,14,21,.96))}
+.herotop{display:flex;align-items:flex-start;gap:10px}
+.herosym{font-family:'Bebas Neue',sans-serif;font-size:64px;line-height:.9;color:var(--fut)}
+.herodesc{font-size:13px;color:var(--t1);margin-top:10px;line-height:1.45;max-width:420px}
+.rquote{margin-left:auto;text-align:right}
+.rquote .px{font-family:'Rajdhani',sans-serif;font-size:78px;line-height:.82;color:var(--t3);font-weight:700}
+.rquote .pc{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700}
+.hl{margin-top:10px;font-size:12px;color:var(--t1);display:flex;gap:14px;flex-wrap:wrap}
+.signalbox{margin-top:16px;border:1px solid var(--bdr2);border-radius:8px;padding:14px;background:rgba(255,255,255,.015);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.signalcap{font-size:11px;letter-spacing:2px;color:var(--t1);text-transform:uppercase}
+.signalbig{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-top:4px}
+.tabrow{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--bdr)}
+.tf{min-width:58px;text-align:center;padding:12px 0;border:1px solid var(--bdr2);border-radius:6px;background:var(--bg1);color:var(--t1);cursor:pointer;font-size:12px}
+.tf.on{border-color:var(--fut);color:var(--fut);box-shadow:inset 0 0 0 1px rgba(255,159,28,.25)}
+.modechip{margin-left:auto;border:1px solid rgba(255,159,28,.75);color:var(--fut);padding:10px 12px;border-radius:6px;letter-spacing:1.8px;text-transform:uppercase;font-size:11px}
+.widget{border-top:1px solid var(--bdr2);background:var(--bg0)}
+#tv-advanced{height:560px}
+#tv-tech{height:170px;border-top:1px solid var(--bdr)}
+
+/* other tabs */
+.placeholder{padding:28px 18px 100px;color:var(--t2)}
+.placeholder h3{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:2px;color:var(--acc2);margin-bottom:10px}
+
+/* bottom nav */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:220;height:68px;background:rgba(7,14,21,.98);backdrop-filter:blur(8px);border-top:1px solid var(--bdr2);display:flex}
+.nb{flex:1;border:none;background:none;color:var(--t1);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+.nb.on{color:var(--acc)}
+.nb .ic{font-size:23px;line-height:1}
+
+/* modal */
+.modalwrap{position:fixed;inset:0;background:rgba(2,6,10,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:300}
+.modalwrap.on{display:flex}
+.modal{width:min(760px,100%);max-height:88vh;overflow:auto;background:var(--bg1);border:1px solid var(--bdr2);border-radius:16px}
+.mh{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--bdr)}
+.mh h3{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1.5px;color:var(--t3)}
+.mb{padding:16px}
+.mtxt{font-size:12px;color:var(--t2);line-height:1.6;margin-bottom:8px}
+.cfg{display:grid;grid-template-columns:74px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bdr)}
+.cfg:last-child{border-bottom:none}
+.cfg .code{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--fut)}
+.cfg .lbl{font-size:11px;color:var(--t1)}
+.cfg input{width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:10px;padding:10px 12px;color:var(--t3)}
+.mrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px}
+.note{padding:12px 16px;border:1px solid var(--bdr2);border-radius:12px;background:rgba(0,229,255,.05);color:var(--t2);font-size:12px;line-height:1.55;margin:14px 16px 0}
+.hide{display:none !important}
+@media (max-width:540px){
+  .logo{font-size:25px}
+  .clock{font-size:22px}
+  .sym{font-size:46px}.herosym{font-size:56px}.pbig,.rquote .px{font-size:64px}
+  #tv-advanced{height:500px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hdr">
+    <div class="hdrtop">
+      <div>
+        <div class="logo">TRADEHUB <em>TERMINAL</em> <span class="ver">v 23.0</span></div>
+      </div>
+      <div class="hdr-r">
+        <div class="statbox">
+          <div class="top">SIM</div>
+          <div class="bot">TradingView</div>
+        </div>
+        <div class="clockwrap">
+          <div class="mbdot" id="marketDot"></div>
+          <div class="clock" id="clockText">--:--<br>PM</div>
+        </div>
+      </div>
+    </div>
+    <div class="statusrow">
+      <div class="pill"><span class="gdot"></span><span id="feedStatus">TradingView futures scanner active</span></div>
+      <div class="pill">Front-month futures mode</div>
+      <button class="btn small" id="refreshBtn">Refresh widgets</button>
+      <button class="btn small" id="settingsBtn">Contract settings</button>
+    </div>
+  </header>
+
+  <div class="tstrip"><div class="tinner" id="tickerStrip"></div></div>
+
+  <section class="pg on" id="page-watch">
+    <div class="sectionlabel"><span class="dot"></span>Futures — Intraday</div>
+    <div class="watchcards" id="watchlist"></div>
+  </section>
+
+  <section class="pg" id="page-chart">
+    <div class="hero">
+      <div class="herotop">
+        <div>
+          <div class="herosym" id="selectedCode">/ES</div>
+          <div class="herodesc" id="selectedDesc"></div>
+        </div>
+        <div class="rquote">
+          <div class="px" id="heroPrice">--</div>
+          <div class="pc" id="heroChange">--</div>
+        </div>
+      </div>
+      <div class="hl">
+        <span id="hlOpen">O: --</span>
+        <span id="hlHigh">H: --</span>
+        <span id="hlLow">L: --</span>
+        <span id="hlNote">Source: TradingView scanner + widget</span>
+      </div>
+      <div class="signalbox">
+        <div>
+          <div class="signalcap">Signal</div>
+          <div class="signalbig" id="signalText">WAIT</div>
+        </div>
+        <div class="desc" id="signalHint">Scanner-aligned read. Use broker/Topstep for execution price.</div>
+        <div class="modechip" id="contractChip">FUTURES 15m</div>
+      </div>
+    </div>
+
+    <div class="tabrow">
+      <button class="tf on" data-int="1">1m</button>
+      <button class="tf" data-int="5">5m</button>
+      <button class="tf" data-int="15">15m</button>
+      <button class="tf" data-int="30">30m</button>
+      <button class="tf" data-int="60">1h</button>
+      <button class="tf" data-int="240">4h</button>
+      <div class="modechip">INTRADAY</div>
+    </div>
+    <div class="widget" id="tv-advanced"></div>
+    <div class="widget" id="tv-tech"></div>
+  </section>
+
+  <section class="pg" id="page-scan"><div class="placeholder"><h3>SCAN</h3><div>The futures engine is live. This tab can be reconnected to your scanner logic later without touching the new pricing foundation.</div></div></section>
+  <section class="pg" id="page-news"><div class="placeholder"><h3>NEWS</h3><div>Reserved for your old terminal-style news feed.</div></div></section>
+  <section class="pg" id="page-wheel"><div class="placeholder"><h3>WHEEL</h3><div>Reserved for wheel tracking. Futures module stays isolated from this tab.</div></div></section>
+  <section class="pg" id="page-options"><div class="placeholder"><h3>OPTIONS</h3><div>Reserved for options tools and contracts.</div></div></section>
+  <section class="pg" id="page-guide"><div class="placeholder"><h3>GUIDE</h3><div>Use WATCH for the scanner-aligned cards and CHART for the active TradingView contract.</div></div></section>
+</div>
+
+<nav class="bnav">
+  <button class="nb on" data-page="watch"><span class="ic">📋</span><span>Watch</span></button>
+  <button class="nb" data-page="chart"><span class="ic">📈</span><span>Chart</span></button>
+  <button class="nb" data-page="scan"><span class="ic">⚡</span><span>Scan</span></button>
+  <button class="nb" data-page="news"><span class="ic">📰</span><span>News</span></button>
+  <button class="nb" data-page="wheel"><span class="ic">🎯</span><span>Wheel</span></button>
+  <button class="nb" data-page="options"><span class="ic">📊</span><span>Options</span></button>
+  <button class="nb" data-page="guide"><span class="ic">📖</span><span>Guide</span></button>
+</nav>
+
+<div class="modalwrap" id="settingsModal">
+  <div class="modal">
+    <div class="mh">
+      <h3>Front-month contract settings</h3>
+      <button class="btn small" id="closeSettingsBtn">Close</button>
+    </div>
+    <div class="mb">
+      <div class="mtxt">Paste the exact TradingView front-month contract here whenever Topstep or TradingView rolls. These values are stored locally on this device.</div>
+      <div id="configRows"></div>
+      <div class="mrow">
+        <button class="btn" id="resetDefaultsBtn">Reset to defaults</button>
+        <button class="btn" id="saveSettingsBtn">Save overrides</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='tradehub_v27_state';
+const SCANNER_URL='https://scanner.tradingview.com/futures/scan';
+const DEFAULTS={selected:'ES',interval:'15',refreshCount:0,lastQuoteAt:'',contracts:{ES:'CME_MINI:ESH2026',CL:'NYMEX:CLK2026',GC:'COMEX:GCM2026',SI:'COMEX:SIK2026',MGC:'COMEX:MGCM2026',SIL:'COMEX:SILK2026'}};
+const INSTRUMENTS={
+  ES:{code:'/ES',name:'E-mini S&P 500',exchange:'CME',desc:'Primary equity index future aligned to the active front-month TradingView contract.',trendBias:'long'},
+  CL:{code:'/CL',name:'WTI Crude Oil',exchange:'NYMEX',desc:'Energy contract with monthly roll cycle and higher intraday impulse.',trendBias:'wait'},
+  GC:{code:'/GC',name:'Gold',exchange:'COMEX',desc:'Full-size COMEX gold contract for your metals module.',trendBias:'long'},
+  SI:{code:'/SI',name:'Silver Futures',exchange:'COMEX',desc:'Full-size COMEX silver contract with tighter scalp attention.',trendBias:'long'},
+  MGC:{code:'/MGC',name:'Micro Gold',exchange:'COMEX',desc:'Micro gold for smaller sizing while keeping the same theme.',trendBias:'wait'},
+  SIL:{code:'/SIL',name:'Micro Silver',exchange:'COMEX',desc:'Micro silver for smaller-size metals exposure.',trendBias:'wait'}
+};
+const CHART_SYMBOLS={ES:'CME_MINI:ES1!',CL:'NYMEX:CL1!',GC:'COMEX:GC1!',SI:'COMEX:SI1!',MGC:'COMEX:MGC1!',SIL:'COMEX:SI1!'};
+let state=loadState(), quoteMap={}, refreshLock=false;
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return clone(DEFAULTS);const p=JSON.parse(raw);return{selected:p.selected||DEFAULTS.selected,interval:String(p.interval||DEFAULTS.interval),refreshCount:Number(p.refreshCount||0),lastQuoteAt:p.lastQuoteAt||'',contracts:Object.assign({},DEFAULTS.contracts,p.contracts||{})};}catch(e){return clone(DEFAULTS)}}
+function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
+function laDate(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Los_Angeles'}));}
+function nowClock(){const d=laDate();const hm=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/Los_Angeles'}).split(' ');document.getElementById('clockText').innerHTML=hm[0]+'<br>'+hm[1];const h=d.getHours();const closed=(h>=13&&h<15);document.getElementById('marketDot').style.background=closed?'var(--red)':'var(--red)';}
+function selectedSymbol(){return state.contracts[state.selected];}
+function activeContractShort(key){return (state.contracts[key].split(':')[1]||state.contracts[key]);}
+function selectedChartSymbol(){return CHART_SYMBOLS[state.selected]||selectedSymbol();}
+function decimalsFor(row){if(row&&row.pricescale&&row.minmov){const d=Math.round(Math.log10(Number(row.pricescale)/Number(row.minmov)));if(Number.isFinite(d)&&d>=0&&d<=8)return d;}const p=Number(row?.close);if(!Number.isFinite(p))return 2;if(p>=1000)return 2;if(p>=100)return 2;if(p>=10)return 3;return 4;}
+function formatPrice(row){if(!row||row.close==null||Number.isNaN(Number(row.close)))return '--';const d=decimalsFor(row);return Number(row.close).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function signedPct(v){if(v==null||Number.isNaN(Number(v)))return '--';const n=Number(v);return (n>0?'+':'')+n.toFixed(2)+'%';}
+function signedAbs(v,d){if(v==null||Number.isNaN(Number(v)))return '--';const n=Number(v);return (n>0?'+':'')+n.toFixed(d);}
+function cls(v){return v>0?'up':v<0?'down':'flat';}
+function signalFor(row,key){const chg=Number(row?.change_pct??0);if(chg>=0.35)return{text:'WATCH LONG',cls:'long',hint:'Momentum is already pushing higher; wait for continuation or pullback confirmation.'};if(chg<=-0.35)return{text:'WATCH SHORT',cls:'short',hint:'Downside momentum is leading; wait for confirmation before acting.'};if(INSTRUMENTS[key].trendBias==='long')return{text:'WATCH LONG',cls:'wait',hint:'Leaning bullish — wait for confirm.'};return{text:'NO TRADE',cls:'wait',hint:'Mixed read — no clean setup yet.'};}
+function renderTickerStrip(){const parts=Object.keys(INSTRUMENTS).map(key=>{const r=quoteMap[key];return `<div class="tchip"><span class="tsym">${INSTRUMENTS[key].code}</span><span class="tprc">${formatPrice(r)}</span><span class="tchg ${cls(Number(r?.change_pct||0))}">${signedPct(Number(r?.change_pct||0))}</span></div>`}).join('');document.getElementById('tickerStrip').innerHTML=parts+parts;}
+function renderWatchlist(){const wrap=document.getElementById('watchlist');wrap.innerHTML='';Object.keys(INSTRUMENTS).forEach(key=>{const info=INSTRUMENTS[key],row=quoteMap[key]||null,sig=signalFor(row,key),pct=Number(row?.change_pct||0),sparkW=Math.max(8,Math.min(100,50+pct*18));const bar=row&&pct<0?'linear-gradient(90deg,#793144,var(--red))':'linear-gradient(90deg,var(--acc),var(--grn))';const card=document.createElement('div');card.className='card'+(state.selected===key?' sel':'');card.onclick=()=>{state.selected=key;saveState();renderWatchlist();renderHero();renderWidgets();setPage('chart');};card.innerHTML=`<div class="cardtop"><div class="symblk"><div class="sym">${info.code}</div><div class="name">${info.name}</div></div><div class="meta"><div>${info.exchange}</div><div>${activeContractShort(key)}</div></div></div><div class="priceblk"><div><div class="sigline"><span class="badge ${sig.cls}">${sig.text}</span><span class="badge tv">TV ↗</span></div><div class="progress"><div style="width:${sparkW}%;background:${bar}"></div></div><div class="cardnote">${row?('Last update: '+(row.update_mode||'stream')):'Scanner unavailable'}</div></div><div><div class="pbig">${formatPrice(row)}</div><div class="pchg ${cls(pct)}">${signedPct(pct)}</div><div class="pabs ${cls(pct)}">${row?signedAbs(Number(row.change_abs||0),decimalsFor(row)):'--'}</div></div></div>`;wrap.appendChild(card);});}
+function renderHero(){const info=INSTRUMENTS[state.selected],row=quoteMap[state.selected]||null,sig=signalFor(row,state.selected),pct=Number(row?.change_pct||0);document.getElementById('selectedCode').textContent=info.code;document.getElementById('selectedDesc').textContent=info.desc;document.getElementById('heroPrice').textContent=formatPrice(row);document.getElementById('heroChange').textContent=signedPct(pct);document.getElementById('heroChange').className='pc '+cls(pct);document.getElementById('signalText').textContent=sig.text;document.getElementById('signalText').style.color=sig.cls==='long'?'var(--grn)':sig.cls==='short'?'var(--red)':'var(--yel)';document.getElementById('signalHint').textContent=sig.hint;document.getElementById('contractChip').textContent='FUTURES '+(state.interval==='60'?'1h':state.interval==='240'?'4h':state.interval+'m');document.getElementById('hlOpen').textContent='Contract: '+selectedSymbol();document.getElementById('hlHigh').textContent='Refreshes: '+state.refreshCount;document.getElementById('hlLow').textContent='Last: '+(state.lastQuoteAt||'Not loaded');document.getElementById('hlNote').textContent='Quotes: front month · Chart: TV continuous';}
+function renderSettings(){const rows=document.getElementById('configRows');rows.innerHTML='';Object.keys(INSTRUMENTS).forEach(key=>{const row=document.createElement('div');row.className='cfg';row.innerHTML=`<div><div class="code">${INSTRUMENTS[key].code}</div><div class="lbl">${INSTRUMENTS[key].name}</div></div><div><input id="cfg-${key}" type="text" value="${state.contracts[key]}"></div><button class="btn small" data-next="${key}">Next</button>`;rows.appendChild(row);});rows.querySelectorAll('[data-next]').forEach(btn=>btn.addEventListener('click',()=>{const key=btn.getAttribute('data-next');const input=document.getElementById('cfg-'+key);input.value=bumpContract(input.value,key);}));}
+function bumpContract(value,key){const cycles={ES:['H','M','U','Z'],CL:['F','G','H','J','K','M','N','Q','U','V','X','Z'],GC:['G','J','M','Q','Z'],SI:['H','K','N','U','Z'],MGC:['G','J','M','Q','Z'],SIL:['H','K','N','U','Z']};const parts=value.split(':');const rhs=parts[1]||value;const m=rhs.match(/^([A-Z_]+)([FGHJKMNQUVXZ])(\d{4})$/);if(!m)return value;const root=m[1],month=m[2],year=Number(m[3]);const seq=cycles[key]||cycles.CL;const idx=seq.indexOf(month);if(idx===-1)return value;const nextMonth=seq[(idx+1)%seq.length];const nextYear=idx===seq.length-1?year+1:year;return `${parts[0]||''}${parts[0]?':':''}${root}${nextMonth}${nextYear}`;}
+function renderAdvancedChart(){const el=document.getElementById('tv-advanced');el.innerHTML='<div class="tradingview-widget-container" style="height:100%;width:100%;"><div class="tradingview-widget-container__widget"></div></div>';const script=document.createElement('script');script.type='text/javascript';script.async=true;script.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';script.text=JSON.stringify({autosize:true,symbol:selectedChartSymbol(),interval:state.interval,timezone:'America/Los_Angeles',theme:'dark',style:'1',locale:'en',enable_publishing:false,allow_symbol_change:false,withdateranges:true,range:'5D',hide_side_toolbar:false,details:true,hotlist:false,calendar:false,studies:['STD;EMA','STD;EMA','STD;MACD'],overrides:{'paneProperties.background':'#03070b','paneProperties.vertGridProperties.color':'rgba(0,229,255,0.08)','paneProperties.horzGridProperties.color':'rgba(0,229,255,0.08)','symbolWatermarkProperties.transparency':88},studies_overrides:{'moving average exponential.length':9,'moving average exponential.length[1]':21},container_id:'tv-advanced'});el.firstChild.appendChild(script);}
+function renderTechnicals(){const el=document.getElementById('tv-tech');el.innerHTML='<div class="tradingview-widget-container" style="height:100%;width:100%;"><div class="tradingview-widget-container__widget"></div></div>';const script=document.createElement('script');script.type='text/javascript';script.async=true;script.src='https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';script.text=JSON.stringify({interval:(state.interval==='60'?'1h':state.interval==='240'?'4h':state.interval+'m'),width:'100%',isTransparent:false,height:'100%',symbol:selectedChartSymbol(),showIntervalTabs:false,locale:'en',colorTheme:'dark'});el.firstChild.appendChild(script);}
+function renderWidgets(){renderAdvancedChart();renderTechnicals();document.querySelectorAll('.tf').forEach(b=>b.classList.toggle('on',b.dataset.int===state.interval));}
+async function fetchScannerQuotes(){if(refreshLock)return;refreshLock=true;const tickers=Object.keys(INSTRUMENTS).map(key=>state.contracts[key]);const payload={symbols:{tickers,query:{types:[]}},columns:['name','description','close','change','change_abs','update_mode','pricescale','minmov','fractional']};try{const res=await fetch(SCANNER_URL,{method:'POST',mode:'cors',cache:'no-store',headers:{'content-type':'text/plain;charset=UTF-8'},body:JSON.stringify(payload)});if(!res.ok)throw new Error('Scanner HTTP '+res.status);const data=await res.json();const next={};if(Array.isArray(data?.data)){data.data.forEach((row,idx)=>{const key=Object.keys(INSTRUMENTS)[idx],d=Array.isArray(row?.d)?row.d:[];next[key]={name:row.s,description:d[1]||INSTRUMENTS[key].name,close:Number(d[2]),change_pct:Number(d[3]),change_abs:Number(d[4]),update_mode:d[5]||'delayed',pricescale:Number(d[6])||100,minmov:Number(d[7])||1,fractional:d[8]};});}quoteMap=next;state.refreshCount+=1;state.lastQuoteAt=new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true,month:'short',day:'numeric'}).format(new Date())+' LA';saveState();document.getElementById('feedStatus').textContent='TradingView futures scanner active';}catch(err){document.getElementById('feedStatus').textContent='Scanner fetch blocked / unavailable';console.error(err);}finally{renderTickerStrip();renderWatchlist();renderHero();refreshLock=false;}}
+function setPage(page){document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id==='page-'+page));document.querySelectorAll('.nb').forEach(b=>b.classList.toggle('on',b.dataset.page===page));if(page==='chart')renderWidgets();}
+function bind(){document.getElementById('refreshBtn').addEventListener('click',()=>{fetchScannerQuotes();renderWidgets();});document.getElementById('settingsBtn').addEventListener('click',()=>document.getElementById('settingsModal').classList.add('on'));document.getElementById('closeSettingsBtn').addEventListener('click',()=>document.getElementById('settingsModal').classList.remove('on'));document.getElementById('settingsModal').addEventListener('click',e=>{if(e.target.id==='settingsModal')e.currentTarget.classList.remove('on')});document.getElementById('saveSettingsBtn').addEventListener('click',()=>{Object.keys(INSTRUMENTS).forEach(key=>{const val=document.getElementById('cfg-'+key).value.trim();if(val)state.contracts[key]=val;});saveState();document.getElementById('settingsModal').classList.remove('on');renderSettings();renderTickerStrip();renderWatchlist();renderHero();renderWidgets();fetchScannerQuotes();});document.getElementById('resetDefaultsBtn').addEventListener('click',()=>{state.contracts=clone(DEFAULTS.contracts);saveState();renderSettings();});document.querySelectorAll('.nb').forEach(btn=>btn.addEventListener('click',()=>setPage(btn.dataset.page)));document.querySelectorAll('.tf').forEach(btn=>btn.addEventListener('click',()=>{state.interval=btn.dataset.int;saveState();renderWidgets();renderHero();}));}
+function init(){nowClock();setInterval(nowClock,1000);renderSettings();renderTickerStrip();renderWatchlist();renderHero();bind();fetchScannerQuotes();setInterval(fetchScannerQuotes,5000);}
+init();
+</script>
+</body>
+</html>
