@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>TradeHub V1 Futures Core</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#111722; --panel2:#161f2c; --border:#273246; --text:#e8eef9; --muted:#8ea0bc;
+    --green:#2bd67b; --red:#ff5d6e; --yellow:#f4c14d; --blue:#4aa3ff; --gray:#9aa7b7;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#091019,#0b0f14);color:var(--text)}
+  .app{max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:72px}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(9,16,25,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:12px 14px}
+  .brand{font-weight:800;letter-spacing:.4px;font-size:18px}
+  .sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .section{padding:12px 14px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+  .searchRow{display:flex;gap:8px;margin-top:10px}
+  input,button,select{font:inherit}
+  .searchRow input{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px}
+  .btn{background:#1b2636;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-weight:700}
+  .btn.primary{background:#17324e;border-color:#2c4f74}
+  .watchlist{margin-top:12px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .wl-head,.wl-row{display:grid;grid-template-columns:52px 56px 74px 64px 52px 1fr 26px;gap:6px;align-items:center;padding:10px 8px}
+  .wl-head{background:#0f1520;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
+  .wl-row{background:var(--panel);border-top:1px solid rgba(255,255,255,.05);font-size:12px}
+  .wl-row:first-of-type{border-top:none}
+  .wl-row .sym{font-weight:800;font-size:14px}
+  .wl-row .contract{font-size:11px;color:var(--muted)}
+  .pill{padding:7px 8px;border-radius:999px;font-size:10px;font-weight:800;text-align:center;white-space:nowrap}
+  .pill.green{background:rgba(43,214,123,.15);color:var(--green)}
+  .pill.red{background:rgba(255,93,110,.15);color:var(--red)}
+  .pill.yellow{background:rgba(244,193,77,.14);color:var(--yellow)}
+  .pill.gray{background:rgba(154,167,183,.15);color:var(--gray)}
+  .pill.blue{background:rgba(74,163,255,.14);color:var(--blue)}
+  .remove{cursor:pointer;color:var(--muted);font-size:18px;text-align:center}
+  .hint{font-size:11px;color:var(--muted);margin-top:8px}
+  .tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(9,16,25,.95);backdrop-filter:blur(8px);border-top:1px solid var(--border)}
+  .tabs-inner{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
+  .tab{padding:10px 4px;text-align:center;font-size:10px;color:var(--muted);cursor:pointer}
+  .tab.active{color:var(--text)}
+  .tab .ico{display:block;font-size:18px;margin-bottom:4px}
+  .hidden{display:none!important}
+  .headerCard{display:grid;grid-template-columns:1fr auto;gap:12px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .price{font-size:28px;font-weight:900}
+  .delta{font-size:13px;margin-top:4px}
+  .miniGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+  .mini{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px}
+  .label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)}
+  .value{font-size:16px;font-weight:800;margin-top:4px}
+  .tradePlan{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .tradePlan .block{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+  .tradePlan .block.full{grid-column:1/-1}
+  .tfTable{margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .tfRow,.tfHead{display:grid;grid-template-columns:54px 1fr 58px;padding:10px 12px;gap:8px;align-items:center}
+  .tfHead{background:#0f1520;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
+  .tfRow{border-top:1px solid rgba(255,255,255,.05)}
+  .tfRow:first-of-type{border-top:none}
+  .chartWrap{margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+  .tfButtons{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .tfButtons button{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:8px 10px;font-size:12px;font-weight:700}
+  .tfButtons button.active{background:#18324f;border-color:#33587d}
+  canvas{width:100%!important;height:240px!important}
+  .readout{margin-top:12px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .reason{margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+  .reason ul{margin:8px 0 0 18px;padding:0}
+  .reason li{margin:6px 0;color:#d8e2f3}
+  .roadmap{display:grid;gap:10px}
+  .roadmap .item{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">TradeHub</div>
+    <div class="sub">V1 Futures Core • mobile-first prototype</div>
+  </div>
+
+  <section id="watchlistPage" class="section">
+    <div class="panel">
+      <div style="font-weight:800">Futures Watchlist</div>
+      <div class="sub">Compact scanner view. Tap any row for the full trade plan.</div>
+      <div class="searchRow">
+        <input id="symbolInput" placeholder="Add symbol: ES, CL, GC, SI, MES, NQ..." />
+        <button class="btn primary" onclick="addSymbol()">Add</button>
+      </div>
+      <div class="watchlist">
+        <div class="wl-head">
+          <div>Symbol</div><div>Contract</div><div>Price</div><div>Change</div><div>ATR</div><div>Callout</div><div></div>
+        </div>
+        <div id="watchlistRows"></div>
+      </div>
+      <div class="hint">Default symbols: ES, CL, GC, SI. Contract month resolves automatically in this prototype. Live broker/API connection can replace the demo feed later.</div>
+    </div>
+  </section>
+
+  <section id="chartPage" class="section hidden">
+    <div class="headerCard">
+      <div>
+        <div class="label">Symbol</div>
+        <div id="detailSymbol" class="value" style="font-size:28px">ES</div>
+        <div id="detailContract" class="sub">Active Contract: ESM26</div>
+      </div>
+      <div style="text-align:right">
+        <div id="detailPrice" class="price">5,284.25</div>
+        <div id="detailChange" class="delta">+12.75 (+0.24%)</div>
+      </div>
+    </div>
+
+    <div class="miniGrid">
+      <div class="mini">
+        <div class="label">Callout</div>
+        <div id="detailCallout" class="value">SCALP LONG</div>
+      </div>
+      <div class="mini">
+        <div class="label">Confidence</div>
+        <div id="detailConfidence" class="value">72%</div>
+      </div>
+      <div class="mini">
+        <div class="label">Regime</div>
+        <div id="detailRegime" class="value">Trending</div>
+      </div>
+      <div class="mini">
+        <div class="label">ATR</div>
+        <div id="detailATR" class="value">18.4</div>
+      </div>
+    </div>
+
+    <div class="tradePlan">
+      <div class="block">
+        <div class="label">Pullback Entry</div>
+        <div id="pullbackEntry" class="value">5279–5282</div>
+      </div>
+      <div class="block">
+        <div class="label">Breakout Entry</div>
+        <div id="breakoutEntry" class="value">5286+</div>
+      </div>
+      <div class="block full">
+        <div class="label">Targets</div>
+        <div id="targets" class="value">T1 5288 • T2 5295 • T3 5302</div>
+      </div>
+      <div class="block full">
+        <div class="label">Invalidation</div>
+        <div id="invalidation" class="value">5274</div>
+      </div>
+    </div>
+
+    <div class="tfTable">
+      <div class="tfHead"><div>TF</div><div>Callout</div><div>Conf.</div></div>
+      <div id="tfRows"></div>
+    </div>
+
+    <div class="chartWrap">
+      <div class="tfButtons" id="tfButtons"></div>
+      <canvas id="priceChart"></canvas>
+    </div>
+
+    <div class="readout">
+      <div class="mini"><div class="label">VWAP</div><div id="readVWAP" class="value">Above (5280.4)</div></div>
+      <div class="mini"><div class="label">RSI</div><div id="readRSI" class="value">61</div></div>
+      <div class="mini"><div class="label">MACD</div><div id="readMACD" class="value">Bullish</div></div>
+      <div class="mini"><div class="label">Volume</div><div id="readVol" class="value">Above Avg</div></div>
+      <div class="mini"><div class="label">50 EMA</div><div id="read50" class="value">5281.1</div></div>
+      <div class="mini"><div class="label">200 EMA</div><div id="read200" class="value">5267.8</div></div>
+    </div>
+
+    <div class="reason">
+      <div class="label">Reason Summary</div>
+      <ul id="reasonList"></ul>
+    </div>
+  </section>
+
+  <section id="scanPage" class="section hidden">
+    <div class="roadmap">
+      <div class="item"><strong>Scanner</strong><div class="muted" style="margin-top:8px">Reserved for stock and futures scans. Filters will plug into the same signal engine later.</div></div>
+      <div class="item"><strong>Planned filters</strong><div class="muted" style="margin-top:8px">Breakouts, relative volume, oversold bounces, trend continuation, wheel candidates.</div></div>
+    </div>
+  </section>
+
+  <section id="newsPage" class="section hidden">
+    <div class="roadmap">
+      <div class="item"><strong>News</strong><div class="muted" style="margin-top:8px">Macro, futures, stocks, crypto, and economic calendar will go here once API feeds are connected.</div></div>
+    </div>
+  </section>
+
+  <section id="wheelPage" class="section hidden">
+    <div class="roadmap">
+      <div class="item"><strong>Wheel</strong><div class="muted" style="margin-top:8px">CSP scanner, assignment quality, and covered call planner are staged for phase 2.</div></div>
+    </div>
+  </section>
+
+  <section id="guidePage" class="section hidden">
+    <div class="roadmap">
+      <div class="item"><strong>How to use</strong><div class="muted" style="margin-top:8px">1) Scan watchlist. 2) Tap symbol. 3) Review entry zone, targets, and timeframe alignment. 4) Trade only when the plan is clear.</div></div>
+      <div class="item"><strong>Current state</strong><div class="muted" style="margin-top:8px">This file is a working front-end prototype with demo data and a signal-engine scaffold. API integration is the next layer.</div></div>
+    </div>
+  </section>
+</div>
+
+<div class="tabs">
+  <div class="tabs-inner">
+    <div class="tab active" onclick="showPage('watchlistPage', this)"><span class="ico">📋</span>Watch</div>
+    <div class="tab" onclick="showPage('chartPage', this)"><span class="ico">📈</span>Chart</div>
+    <div class="tab" onclick="showPage('scanPage', this)"><span class="ico">🔎</span>Scan</div>
+    <div class="tab" onclick="showPage('newsPage', this)"><span class="ico">📰</span>News</div>
+    <div class="tab" onclick="showPage('wheelPage', this)"><span class="ico">🎡</span>Wheel</div>
+    <div class="tab" onclick="showPage('guidePage', this)"><span class="ico">❓</span>Guide</div>
+  </div>
+</div>
+
+<script>
+const monthCodes = ['H','M','U','Z'];
+const activeYear = '26';
+const tfList = ['1m','5m','15m','30m','1h','4h','1d'];
+const watchSymbols = [];
+const baseMarket = {
+  ES:{price:5284.25, prevClose:5271.5, atr:18.4},
+  CL:{price:72.14, prevClose:72.52, atr:0.84},
+  GC:{price:2145.6, prevClose:2140.2, atr:21.7},
+  SI:{price:24.18, prevClose:24.25, atr:0.41},
+  MES:{price:5284.25, prevClose:5271.5, atr:18.4},
+  MGC:{price:2145.6, prevClose:2140.2, atr:21.7},
+  MCL:{price:72.14, prevClose:72.52, atr:0.84},
+  NQ:{price:18682.5, prevClose:18625.0, atr:91.2},
+};
+let selectedSymbol = 'ES';
+let currentTF = '5m';
+let chart;
+
+function resolveContract(sym){
+  const quarter = monthCodes[(new Date().getMonth()<=2)?0:(new Date().getMonth()<=5)?1:(new Date().getMonth()<=8)?2:3];
+  return `${sym}${quarter}${activeYear}`;
+}
+
+function colorClass(callout){
+  if(callout.includes('LONG')) return callout.includes('WATCH')?'yellow':'green';
+  if(callout.includes('SHORT')) return callout.includes('WATCH')?'yellow':'red';
+  if(callout.includes('VWAP')) return 'blue';
+  return 'gray';
+}
+
+function clamp(n,min,max){ return Math.max(min,Math.min(max,n)); }
+
+function computeSignal(price, prevClose, atr, tf){
+  const driftMap = { '1m':0.45,'5m':0.7,'15m':0.9,'30m':1.0,'1h':1.1,'4h':1.2,'1d':1.25 };
+  const drift = ((price-prevClose)/Math.max(prevClose,1))*100*driftMap[tf];
+  const rsi = clamp(50 + drift*20 + (Math.random()*8-4), 26, 78);
+  const vwap = price - (Math.random()*atr*0.35 - atr*0.175);
+  const ema50 = price - (Math.random()*atr*0.45 - atr*0.225);
+  const ema200 = price - (Math.random()*atr*1.2 - atr*0.6);
+  const macdBull = rsi >= 52;
+  const volAbove = Math.random() > 0.42;
+  const adx = clamp(14 + Math.abs(drift)*11 + Math.random()*10, 10, 42);
+  const squeeze = adx < 19 && Math.random() > 0.5;
+  let score = 0;
+  if(price > vwap) score += 18; else score -= 18;
+  if(ema50 > ema200) score += 12; else score -= 12;
+  if(rsi > 55) score += 14; else if(rsi < 45) score -= 14;
+  if(macdBull) score += 10; else score -= 10;
+  if(volAbove) score += drift >= 0 ? 12 : -12;
+  if(adx > 25) score += drift >= 0 ? 10 : -10;
+  if(squeeze) score = score * 0.6;
+  const conf = clamp(Math.round(50 + score*0.65), 32, 94);
+  let callout = 'NEUTRAL';
+  if(squeeze && adx < 19) callout = 'LIQUIDITY SWEEP LIKELY';
+  else if(Math.abs(score) < 8) callout = 'WAIT — RANGE';
+  else if(score >= 32) callout = conf >= 65 ? 'SCALP LONG' : 'WATCH LONG';
+  else if(score >= 18) callout = 'LONG';
+  else if(score <= -32) callout = conf >= 65 ? 'SCALP SHORT' : 'WATCH SHORT';
+  else if(score <= -18) callout = 'SHORT';
+  else if(Math.abs(price-vwap) < atr*0.06) callout = 'VWAP RECLAIM';
+  const regime = adx > 25 ? 'Trending' : squeeze ? 'Breakout Forming' : 'Ranging';
+  const reasons = [];
+  reasons.push(price > vwap ? 'Price above VWAP' : 'Price below VWAP');
+  reasons.push(ema50 > ema200 ? '50 EMA above 200 EMA' : '50 EMA below 200 EMA');
+  reasons.push(rsi >= 55 ? 'RSI strengthening' : rsi <= 45 ? 'RSI weakening' : 'RSI neutral');
+  reasons.push(volAbove ? 'Volume above average' : 'Volume below average');
+  return {callout, conf, regime, rsi:Math.round(rsi), vwap, ema50, ema200, macdBull, volAbove, adx, reasons};
+}
+
+function seedSymbol(sym){
+  const base = baseMarket[sym] || {price:100, prevClose:99, atr:1.5};
+  return {symbol:sym, contract:resolveContract(sym), ...base, tfSignals:{}};
+}
+
+function ensureDefaults(){ ['ES','CL','GC','SI'].forEach(s => { if(!watchSymbols.find(x=>x.symbol===s)) watchSymbols.push(seedSymbol(s)); }); }
+
+function tickMarket(){
+  watchSymbols.forEach(item=>{
+    const move = (Math.random()-0.5) * item.atr * 0.08;
+    item.price = +(item.price + move).toFixed(item.symbol==='ES'||item.symbol==='MES'||item.symbol==='NQ'?2:2);
+    item.atr = +(Math.max(item.atr*0.97 + Math.abs(move)*0.9, item.atr*0.6)).toFixed(2);
+    item.change = +(item.price - item.prevClose).toFixed(2);
+    item.changePct = +(((item.change)/item.prevClose)*100).toFixed(2);
+    tfList.forEach(tf => item.tfSignals[tf] = computeSignal(item.price, item.prevClose, item.atr, tf));
+  });
+}
+
+function renderWatchlist(){
+  const wrap = document.getElementById('watchlistRows');
+  wrap.innerHTML = '';
+  watchSymbols.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'wl-row';
+    row.innerHTML = `
+      <div class="sym">${item.symbol}</div>
+      <div class="contract">${item.contract}</div>
+      <div>${item.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div style="color:${item.change>=0?'var(--green)':'var(--red)'}">${item.change>=0?'+':''}${item.change}</div>
+      <div>${item.atr}</div>
+      <div><span class="pill ${colorClass(item.tfSignals['5m'].callout)}">${item.tfSignals['5m'].callout}</span></div>
+      <div class="remove" title="Remove">×</div>`;
+    row.addEventListener('click', (e)=>{ if(e.target.classList.contains('remove')) return; selectedSymbol = item.symbol; showPage('chartPage'); renderDetail(); });
+    row.querySelector('.remove').addEventListener('click', (e)=>{ e.stopPropagation(); removeSymbol(item.symbol); });
+    wrap.appendChild(row);
+  });
+}
+
+function renderDetail(){
+  const item = watchSymbols.find(x=>x.symbol===selectedSymbol) || watchSymbols[0];
+  if(!item) return;
+  document.getElementById('detailSymbol').textContent = item.symbol;
+  document.getElementById('detailContract').textContent = `Active Contract: ${item.contract}`;
+  document.getElementById('detailPrice').textContent = item.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('detailChange').textContent = `${item.change>=0?'+':''}${item.change} (${item.changePct>=0?'+':''}${item.changePct}%)`;
+  const sig = item.tfSignals['5m'];
+  document.getElementById('detailCallout').innerHTML = `<span class="pill ${colorClass(sig.callout)}" style="font-size:12px;padding:9px 12px">${sig.callout}</span>`;
+  document.getElementById('detailConfidence').textContent = `${sig.conf}%`;
+  document.getElementById('detailRegime').textContent = sig.regime;
+  document.getElementById('detailATR').textContent = item.atr;
+  const pb1 = (item.price - item.atr*0.18).toFixed(2), pb2 = (item.price - item.atr*0.05).toFixed(2), bo = (item.price + item.atr*0.12).toFixed(2), inv = (item.price - item.atr*0.38).toFixed(2);
+  const shortPb1 = (item.price + item.atr*0.05).toFixed(2), shortPb2 = (item.price + item.atr*0.18).toFixed(2), shortBo = (item.price - item.atr*0.12).toFixed(2), shortInv = (item.price + item.atr*0.38).toFixed(2);
+  const bullish = sig.callout.includes('LONG') || sig.callout.includes('VWAP');
+  document.getElementById('pullbackEntry').textContent = bullish ? `${pb1}–${pb2}` : `${shortPb1}–${shortPb2}`;
+  document.getElementById('breakoutEntry').textContent = bullish ? `${bo}+ on confirmation` : `${shortBo}- on confirmation`;
+  document.getElementById('targets').textContent = bullish ? `T1 ${(item.price + item.atr*0.18).toFixed(2)} • T2 ${(item.price + item.atr*0.4).toFixed(2)} • T3 ${(item.price + item.atr*0.65).toFixed(2)}` : `T1 ${(item.price - item.atr*0.18).toFixed(2)} • T2 ${(item.price - item.atr*0.4).toFixed(2)} • T3 ${(item.price - item.atr*0.65).toFixed(2)}`;
+  document.getElementById('invalidation').textContent = bullish ? inv : shortInv;
+  const tfRows = document.getElementById('tfRows');
+  tfRows.innerHTML = '';
+  tfList.forEach(tf=>{
+    const s = item.tfSignals[tf];
+    const r = document.createElement('div');
+    r.className = 'tfRow';
+    r.innerHTML = `<div>${tf}</div><div><span class="pill ${colorClass(s.callout)}">${s.callout}</span></div><div>${s.conf}%</div>`;
+    tfRows.appendChild(r);
+  });
+  document.getElementById('readVWAP').textContent = `${sig.vwap <= item.price ? 'Above' : 'Below'} (${sig.vwap.toFixed(2)})`;
+  document.getElementById('readRSI').textContent = sig.rsi;
+  document.getElementById('readMACD').textContent = sig.macdBull ? 'Bullish' : 'Bearish';
+  document.getElementById('readVol').textContent = sig.volAbove ? 'Above Avg' : 'Below Avg';
+  document.getElementById('read50').textContent = sig.ema50.toFixed(2);
+  document.getElementById('read200').textContent = sig.ema200.toFixed(2);
+  document.getElementById('reasonList').innerHTML = sig.reasons.map(x=>`<li>${x}</li>`).join('');
+  renderTFButtons();
+  renderChart(item);
+}
+
+function renderTFButtons(){
+  const wrap = document.getElementById('tfButtons');
+  wrap.innerHTML='';
+  tfList.forEach(tf=>{
+    const b = document.createElement('button');
+    b.textContent = tf; b.className = tf===currentTF?'active':'';
+    b.onclick = ()=>{ currentTF=tf; renderDetail(); };
+    wrap.appendChild(b);
+  });
+}
+
+function buildSeries(item, tf){
+  const pts = 36;
+  const volMap = {'1m':0.12,'5m':0.22,'15m':0.34,'30m':0.44,'1h':0.58,'4h':0.82,'1d':1.18};
+  let p = item.price - item.atr*0.6;
+  const data = [];
+  for(let i=0;i<pts;i++){
+    p += (Math.random()-0.48) * item.atr * volMap[tf] * 0.28;
+    data.push(+p.toFixed(2));
+  }
+  return data;
+}
+
+function renderChart(item){
+  const data = buildSeries(item, currentTF);
+  const labels = data.map((_,i)=> i+1);
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById('priceChart'), {
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Price', data, borderColor:'#dbe7ff', borderWidth:2, pointRadius:0, tension:.24},
+      {label:'VWAP', data:data.map(x=>x-item.atr*0.08), borderColor:'#4aa3ff', borderWidth:1.2, pointRadius:0, tension:.15},
+      {label:'50 EMA', data:data.map((x,i)=>x-item.atr*0.04+(i*0.004)), borderColor:'#2bd67b', borderWidth:1.2, pointRadius:0, tension:.18},
+      {label:'200 EMA', data:data.map((x,i)=>x-item.atr*0.18+(i*0.001)), borderColor:'#ff5d6e', borderWidth:1.2, pointRadius:0, tension:.18},
+      {label:'Upper BB', data:data.map(x=>x+item.atr*0.12), borderColor:'rgba(244,193,77,.6)', borderWidth:1, pointRadius:0, tension:.12},
+      {label:'Lower BB', data:data.map(x=>x-item.atr*0.12), borderColor:'rgba(244,193,77,.6)', borderWidth:1, pointRadius:0, tension:.12}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false, grid:{display:false}}, y:{ticks:{color:'#8ea0bc'}, grid:{color:'rgba(255,255,255,.06)'}}}
+  });
+}
+
+function addSymbol(){
+  const input = document.getElementById('symbolInput');
+  const sym = input.value.trim().toUpperCase();
+  if(!sym) return;
+  if(watchSymbols.find(x=>x.symbol===sym)){ input.value=''; return; }
+  watchSymbols.push(seedSymbol(sym));
+  tickMarket(); renderWatchlist(); input.value='';
+}
+
+function removeSymbol(sym){
+  const i = watchSymbols.findIndex(x=>x.symbol===sym);
+  if(i>-1) watchSymbols.splice(i,1);
+  if(selectedSymbol===sym && watchSymbols.length) selectedSymbol = watchSymbols[0].symbol;
+  renderWatchlist(); renderDetail();
+}
+
+function showPage(id, el){
+  ['watchlistPage','chartPage','scanPage','newsPage','wheelPage','guidePage'].forEach(pid=>document.getElementById(pid).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  else {
+    const idx = {watchlistPage:0,chartPage:1,scanPage:2,newsPage:3,wheelPage:4,guidePage:5}[id];
+    document.querySelectorAll('.tab')[idx].classList.add('active');
+  }
+}
+
+ensureDefaults();
+tickMarket();
+renderWatchlist();
+renderDetail();
+setInterval(()=>{ tickMarket(); renderWatchlist(); renderDetail(); }, 5000);
+setInterval(()=>{ if(document.getElementById('chartPage') && !document.getElementById('chartPage').classList.contains('hidden')) renderDetail(); }, 10000);
+</script>
+</body>
+</html>
